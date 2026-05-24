@@ -1,4 +1,5 @@
 const store = require("../database/jsonStore");
+const alertaService = require("./alerta.service");
 const { CARAT_QUESTIONS, ANSWER_OPTIONS, calculateScores } = require("../models/carat.model");
 
 class CaratService {
@@ -49,11 +50,15 @@ class CaratService {
     };
 
     data.caratAvaliacoes.push(avaliacao);
+    const alertasGerados = alertaService.gerarParaAvaliacao(data, avaliacao, anteriores[0] || null);
 
     store.write(data);
     store.addAudit(payload.atorId || utente.userId, "CRIAR_AVALIACAO_CARAT", `Avaliacao CARAT ${avaliacao.id} criada para utente ${utenteId}.`);
 
-    return avaliacao;
+    return {
+      avaliacao,
+      alertasGerados
+    };
   }
 }
 
