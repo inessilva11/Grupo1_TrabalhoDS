@@ -1,4 +1,4 @@
-const store = require("../database/jsonStore");
+const store = require("../database/sqliteStore");
 const { validateAlertState } = require("../models/alerta.model");
 
 function nextIdFromData(data, collectionName) {

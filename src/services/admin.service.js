@@ -1,4 +1,4 @@
-const store = require("../database/jsonStore");
+const store = require("../database/sqliteStore");
 
 class AdminService {
   obterConfiguracao() {
@@ -41,7 +41,7 @@ class AdminService {
   resetDados() {
     const data = store.reset();
     return {
-      mensagem: "Base JSON reposta com dados simulados.",
+      mensagem: "Base SQLite reposta com dados simulados.",
       totais: {
         users: data.users.length,
         utentes: data.utentes.length,

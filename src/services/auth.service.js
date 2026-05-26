@@ -1,6 +1,6 @@
-const store = require("../database/jsonStore");
-const crypto = require("crypto");
+const store = require("../database/sqliteStore");
 const { normalizeEmail, publicUser } = require("../models/utilizador.model");
+const { createJwt, verifyJwt } = require("../utils/jwt");
 
 class AuthService {
   login({ email, password }) {
@@ -16,13 +16,20 @@ class AuthService {
     }
 
     this.removeExpiredSessions(data);
+    const sessionId = store.nextId("sessions");
+    const jwt = createJwt({
+      sub: user.id,
+      role: user.role,
+      sid: sessionId,
+      email: user.email
+    });
     const session = {
-      id: store.nextId("sessions"),
-      token: crypto.randomBytes(32).toString("hex"),
+      id: sessionId,
+      token: jwt.token,
       userId: user.id,
       role: user.role,
       createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString()
+      expiresAt: jwt.expiresAt
     };
     data.sessions.push(session);
     store.write(data);
@@ -32,6 +39,8 @@ class AuthService {
       user: publicUser(user),
       profile: this.getProfileForUser(data, user),
       token: session.token,
+      tokenType: "Bearer",
+      auth: "JWT",
       expiresAt: session.expiresAt
     };
   }
@@ -68,6 +77,8 @@ class AuthService {
       user: publicUser(user),
       profile: this.getProfileForUser(data, user),
       token: session.token,
+      tokenType: "Bearer",
+      auth: "JWT",
       expiresAt: session.expiresAt
     };
   }
@@ -93,8 +104,11 @@ class AuthService {
       throw error;
     }
 
+    const payload = verifyJwt(token);
     this.removeExpiredSessions(data);
-    const session = data.sessions.find((candidate) => candidate.token === token);
+    const session = data.sessions.find((candidate) => {
+      return candidate.token === token && candidate.id === Number(payload.sid) && candidate.userId === Number(payload.sub);
+    });
     if (!session) {
       const error = new Error("Sessao invalida ou expirada.");
       error.statusCode = 401;

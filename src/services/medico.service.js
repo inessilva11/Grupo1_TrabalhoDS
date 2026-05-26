@@ -1,4 +1,4 @@
-const store = require("../database/jsonStore");
+const store = require("../database/sqliteStore");
 const { normalizeEmail, publicUser, ROLES } = require("../models/utilizador.model");
 
 function enrichMedico(data, medico) {

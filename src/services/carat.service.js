@@ -1,4 +1,4 @@
-const store = require("../database/jsonStore");
+const store = require("../database/sqliteStore");
 const alertaService = require("./alerta.service");
 const { CARAT_QUESTIONS, ANSWER_OPTIONS, calculateScores } = require("../models/carat.model");
 

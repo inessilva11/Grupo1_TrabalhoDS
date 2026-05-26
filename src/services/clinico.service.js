@@ -1,4 +1,4 @@
-const store = require("../database/jsonStore");
+const store = require("../database/sqliteStore");
 
 function validateClinicalPayload(payload) {
   if (!payload.utenteId || !payload.medicoId || !payload.nome) {

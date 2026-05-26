@@ -1,4 +1,4 @@
-const store = require("../database/jsonStore");
+const store = require("../database/sqliteStore");
 const { publicUser } = require("../models/utilizador.model");
 
 function sortByDateDesc(items, field = "data") {
