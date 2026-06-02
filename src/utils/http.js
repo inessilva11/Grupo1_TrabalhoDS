@@ -45,7 +45,7 @@ function parseBody(req) {
       try {
         resolve(JSON.parse(raw));
       } catch (error) {
-        reject(new Error("JSON invalido no corpo do pedido."));
+        reject(new Error("JSON inválido no corpo do pedido."));
       }
     });
     req.on("error", reject);

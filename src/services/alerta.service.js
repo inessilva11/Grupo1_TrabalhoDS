@@ -15,7 +15,7 @@ function enrichAlerta(data, alerta) {
   return {
     ...alerta,
     utenteNome: utenteUser?.nome || "Utente desconhecido",
-    medicoNome: medicoUser?.nome || "Medico desconhecido"
+    medicoNome: medicoUser?.nome || "Médico desconhecido"
   };
 }
 
@@ -35,7 +35,7 @@ class AlertaService {
     const data = store.read();
     const alerta = data.alertas.find((candidate) => candidate.id === Number(id));
     if (!alerta) {
-      const error = new Error("Alerta nao encontrado.");
+      const error = new Error("Alerta não encontrado.");
       error.statusCode = 404;
       throw error;
     }
@@ -50,7 +50,7 @@ class AlertaService {
       id: alerta.acoes.length + 1,
       autorId: payload.autorId ? Number(payload.autorId) : null,
       estado: payload.estado,
-      nota: payload.nota || "Atualizacao de estado",
+      nota: payload.nota || "Atualização de estado",
       data: new Date().toISOString()
     });
 
@@ -68,14 +68,14 @@ class AlertaService {
       motivos.push("Score CARAT abaixo do limiar configurado.");
     }
     if (avaliacaoAnterior && queda >= config.variacaoDeterioracao) {
-      motivos.push(`Deterioracao de ${queda} pontos face a avaliacao anterior.`);
+      motivos.push(`Deterioração de ${queda} pontos face a avaliação anterior.`);
     }
 
     if (motivos.length === 0) {
       return [];
     }
 
-    const prioridade = avaliacao.scoreTotal < 16 || queda >= config.variacaoDeterioracao + 2 ? "Alta" : "Media";
+    const prioridade = avaliacao.scoreTotal < 16 || queda >= config.variacaoDeterioracao + 2 ? "Alta" : "Média";
     const alerta = {
       id: nextIdFromData(data, "alertas"),
       utenteId: avaliacao.utenteId,

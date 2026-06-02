@@ -78,9 +78,9 @@ function updateShell() {
   });
 
   const titles = {
-    login: "Iniciar sessao",
+    login: "Iniciar sessão",
     utente: "Dashboard do Utente",
-    medico: "Painel Clinico do Medico",
+    medico: "Painel Clínico do Médico",
     administrador: "Consola do Administrador"
   };
   titleEl.textContent = state.session ? titles[state.role] : titles.login;
@@ -89,8 +89,8 @@ function updateShell() {
   sessionCard.innerHTML = `
     <span class="status-dot"></span>
     <div>
-      <strong>${escapeHtml(user?.nome || "Sem sessao")}</strong>
-      <span>${escapeHtml(user?.email || "Sessao de demonstracao")}</span>
+      <strong>${escapeHtml(user?.nome || "Sem sessão")}</strong>
+      <span>${escapeHtml(user?.email || "Sessão de demonstração")}</span>
     </div>
     ${state.session ? `<button class="button secondary small" type="button" id="logout-button">Sair</button>` : ""}
   `;
@@ -224,7 +224,7 @@ function stateKind(alertState) {
 function renderScoreChart(avaliacoes, config) {
   const items = [...avaliacoes].sort((a, b) => new Date(a.data) - new Date(b.data)).slice(-8);
   if (items.length === 0) {
-    return `<div class="empty">Ainda nao ha avaliacoes CARAT para desenhar a evolucao.</div>`;
+    return `<div class="empty">Ainda não há avaliações CARAT para desenhar a evolução.</div>`;
   }
 
   const width = 720;
@@ -375,50 +375,50 @@ function renderCaratSection(intro, questions) {
 
 function renderQuestionarioForm() {
   const { perguntas } = state.questionario;
-  const symptomQuestions = perguntas.filter((question) => question.section !== "medicacao");
-  const medicationQuestions = perguntas.filter((question) => question.section === "medicacao");
+  const symptomQuestions = perguntas.filter((question) => question.section !== "medicação");
+  const medicationQuestions = perguntas.filter((question) => question.section === "medicação");
 
   return `
     <form id="carat-form" class="form-grid carat-form">
       ${renderCaratSection(
-        "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia, em media, quantas vezes teve:",
+        "Nas últimas 4 semanas, por causa da sua asma/rinite/alergia, em média, quantas vezes teve:",
         symptomQuestions
       )}
       ${renderCaratSection(
-        "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia, quantas vezes teve que:",
+        "Nas últimas 4 semanas, quantas vezes teve que:",
         medicationQuestions
       )}
 
       <div class="carat-required">
-        <span>* Todas as questoes sao de resposta obrigatoria</span>
+        <span>* Todas as questões sao de resposta obrigatória</span>
         <span id="carat-answered-count">0/10 respostas</span>
       </div>
 
       <div class="carat-score-board" aria-live="polite">
         <div class="carat-score">
-          <span>Pontuacao Total</span>
+          <span>Pontuação Total</span>
           <strong id="carat-score-total">0</strong>
-          <small id="carat-score-total-note">Pontuacoes superiores a 24 indicam bom controlo da doenca.</small>
+          <small id="carat-score-total-note">Pontuações superiores a 24 indicam bom controlo da doença.</small>
         </div>
         <div class="carat-score">
-          <span>Pontuacao vias aereas superiores (item 1-4)</span>
+          <span>Pontuação vias aéreas superiores (item 1-4)</span>
           <strong id="carat-score-upper">0</strong>
-          <small id="carat-score-upper-note">Controlado se pontuacao for &gt;8.</small>
+          <small id="carat-score-upper-note">Controlado se pontuação for &gt;8.</small>
         </div>
         <div class="carat-score">
-          <span>Pontuacao vias aereas inferiores (item 5-10)</span>
+          <span>Pontuação vias aéreas inferiores (item 5-10)</span>
           <strong id="carat-score-lower">0</strong>
-          <small id="carat-score-lower-note">Controlado se pontuacao for &gt;=16.</small>
+          <small id="carat-score-lower-note">Controlado se pontuação for &gt;=16.</small>
         </div>
       </div>
 
       <div class="field">
-        <label>Comentarios</label>
-        <textarea name="comentarios" placeholder="Registe informacao adicional para a equipa clinica."></textarea>
+        <label>Comentários</label>
+        <textarea name="comentários" placeholder="Registe informação adicional para a equipa clínica."></textarea>
       </div>
 
       <div class="actions">
-        <button class="button" type="submit">Submeter avaliacao CARAT</button>
+        <button class="button" type="submit">Submeter avaliação CARAT</button>
         <button class="button secondary" type="reset">Limpar</button>
       </div>
     </form>
@@ -442,26 +442,26 @@ function updateCaratScorePreview(form) {
   form.querySelector("#carat-score-lower").textContent = lower;
   form.querySelector("#carat-answered-count").textContent = `${answered}/10 respostas`;
   form.querySelector("#carat-score-total-note").textContent =
-    total > 24 ? "Bom controlo da doenca." : "Pontuacoes superiores a 24 indicam bom controlo da doenca.";
+    total > 24 ? "Bom controlo da doença." : "Pontuações superiores a 24 indicam bom controlo da doença.";
   form.querySelector("#carat-score-upper-note").textContent =
-    upper > 8 ? "Vias aereas superiores controladas." : "Controlado se pontuacao for >8.";
+    upper > 8 ? "Vias aéreas superiores controladas." : "Controlado se pontuação for >8.";
   form.querySelector("#carat-score-lower-note").textContent =
-    lower >= 16 ? "Vias aereas inferiores controladas." : "Controlado se pontuacao for >=16.";
+    lower >= 16 ? "Vias aéreas inferiores controladas." : "Controlado se pontuação for >=16.";
 }
 
 function renderUtente() {
   const d = state.dashboard;
   const latest = d.resumo.ultimaAvaliacao;
   const tendencia = d.resumo.tendencia;
-  const tendenciaLabel = tendencia === 0 ? "Sem variacao recente" : tendencia > 0 ? `Subiu ${tendencia} pontos` : `Desceu ${Math.abs(tendencia)} pontos`;
+  const tendenciaLabel = tendencia === 0 ? "Sem variação recente" : tendencia > 0 ? `Subiu ${tendencia} pontos` : `Desceu ${Math.abs(tendencia)} pontos`;
   const activeAlerts = d.alertas.filter((alerta) => alerta.estado !== "FECHADO");
 
   return `
     <div class="metric-row">
-      ${metric("Score atual", latest?.scoreTotal ?? "-", latest?.interpretacao || "Sem avaliacao")}
+      ${metric("Score atual", latest?.scoreTotal ?? "-", latest?.interpretacao || "Sem avaliação")}
       ${metric("Alertas ativos", d.resumo.alertasAtivos)}
-      ${metric("Score medio", d.resumo.scoreMedio ?? "-")}
-      ${metric("Tendencia", tendenciaLabel)}
+      ${metric("Score médio", d.resumo.scoreMedio ?? "-")}
+      ${metric("Tendência", tendenciaLabel)}
     </div>
 
     <div class="grid two">
@@ -471,7 +471,7 @@ function renderUtente() {
       </section>
 
       <section class="panel">
-        <h2>Alertas e proximos passos</h2>
+        <h2>Alertas e próximos passos</h2>
         ${latest ? `<p><strong>${escapeHtml(latest.interpretacao)}</strong></p>` : ""}
         <div class="chip-row">
           ${(latest?.recomendacoes || []).map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join("")}
@@ -482,7 +482,7 @@ function renderUtente() {
     </div>
 
     <section class="panel carat-panel">
-      <h2>Teste de Controlo da Asma e Rinite Alergica</h2>
+      <h2>Teste de Controlo da Asma e Rinite Alérgica</h2>
       ${renderQuestionarioForm()}
     </section>
 
@@ -511,7 +511,7 @@ function renderUtente() {
           <div class="form-grid two">
             <div class="field">
               <label>Profissao</label>
-              <input name="profissao" value="${escapeHtml(d.perfil.profissao)}">
+              <input name="profissão" value="${escapeHtml(d.perfil.profissao)}">
             </div>
             <div class="field">
               <label>Estado civil</label>
@@ -521,7 +521,7 @@ function renderUtente() {
           <button class="button" type="submit">Atualizar perfil</button>
         </form>
 
-        <h3>Medicacao</h3>
+        <h3>Medicação</h3>
         ${renderSimpleList(d.medicacoes, (item) => `${item.nome} | ${item.dose} | ${item.estado}`)}
         <h3>Exames</h3>
         ${renderSimpleList(d.exames, (item) => `${item.nome} (${item.codigo}) | ${item.estado}`)}
@@ -550,7 +550,6 @@ function renderLogin() {
     <section class="login-grid">
       <div class="login-copy">
         <h2>Entrar no SauDInoB</h2>
-        <p>A autenticacao agora usa sessao com token no backend. Entre com uma conta ou use um atalho de demonstracao.</p>
         <div class="demo-accounts">
           ${Object.entries(demoAccounts)
             .map(([role, account]) => `
@@ -569,7 +568,7 @@ function renderLogin() {
       </div>
 
       <form id="login-form" class="panel auth-form">
-        <h2>Iniciar sessao</h2>
+        <h2>Iniciar sessão</h2>
         <div class="field">
           <label>Email</label>
           <input name="email" type="email" autocomplete="username" value="utente@saudinob.pt" required>
@@ -635,7 +634,7 @@ function renderMedico() {
                   </div>
                   <div class="actions">
                     ${utente.ultimaAvaliacao ? badge(`${utente.ultimaAvaliacao.scoreTotal}/30`) : badge("Sem score")}
-                    ${utente.alertasAtivos ? badge(`${utente.alertasAtivos} alerta`, "high") : badge("Estavel")}
+                    ${utente.alertasAtivos ? badge(`${utente.alertasAtivos} alerta`, "high") : badge("Estável")}
                   </div>
                 </div>
               </button>
@@ -654,7 +653,7 @@ function renderMedico() {
               <h3>Alertas do utente</h3>
               ${renderAlertas(selected.alertas, true)}
             `
-            : `<div class="empty">Escolha um utente para ver o historico clinico.</div>`
+            : `<div class="empty">Escolha um utente para ver o historico clínico.</div>`
         }
       </section>
     </div>
@@ -666,18 +665,18 @@ function renderMedico() {
             <section class="panel">
               <h2>Registo clinico</h2>
               <form id="medicacao-form" class="form-grid">
-                <h3>Nova medicacao</h3>
+                <h3>Nova medicação</h3>
                 <div class="form-grid two">
                   <div class="field">
-                    <label>Medicacao</label>
+                    <label>Medicação</label>
                     <input name="nome" placeholder="Ex: Corticosteroide inalado" required>
                   </div>
                   <div class="field">
                     <label>Dose</label>
-                    <input name="dose" placeholder="Ex: 1 inalacao 12/12h">
+                    <input name="dose" placeholder="Ex: 1 inalação 12/12h">
                   </div>
                 </div>
-                <button class="button" type="submit">Registar medicacao</button>
+                <button class="button" type="submit">Registar medicação</button>
               </form>
 
               <form id="exame-form" class="form-grid">
@@ -688,7 +687,7 @@ function renderMedico() {
                     <input name="nome" placeholder="Ex: Espirometria" required>
                   </div>
                   <div class="field">
-                    <label>Codigo com 4 caracteres</label>
+                    <label>Código com 4 caracteres</label>
                     <input name="codigo" maxlength="4" placeholder="ESP2" required>
                   </div>
                 </div>
@@ -697,8 +696,8 @@ function renderMedico() {
             </section>
 
             <section class="panel">
-              <h2>Historico clinico</h2>
-              <h3>Medicacao</h3>
+              <h2>Histórico clínico</h2>
+              <h3>Medicação</h3>
               ${renderSimpleList(selected.medicacoes, (item) => `${item.nome} | ${item.dose} | ${item.estado}`)}
               <h3>Exames</h3>
               ${renderSimpleList(selected.exames, (item) => `${item.nome} (${item.codigo}) | ${item.estado}`)}
@@ -719,13 +718,13 @@ function renderAdmin() {
     <div class="metric-row">
       ${metric("Utilizadores", d.resumo.utilizadores)}
       ${metric("Utentes", d.resumo.utentes)}
-      ${metric("Medicos", d.resumo.medicos)}
+      ${metric("Médicos", d.resumo.medicos)}
       ${metric("Alertas ativos", d.resumo.alertasAtivos)}
     </div>
 
     <div class="grid two">
       <section class="panel">
-        <h2>Configuracao de limiares</h2>
+        <h2>Configuração de limiares</h2>
         <form id="config-form" class="form-grid">
           <div class="form-grid two">
             <div class="field">
@@ -733,12 +732,12 @@ function renderAdmin() {
               <input name="limiarControloInsuficiente" type="number" min="0" max="30" value="${d.configuracao.limiarControloInsuficiente}" required>
             </div>
             <div class="field">
-              <label>Variacao de deterioracao</label>
-              <input name="variacaoDeterioracao" type="number" min="1" max="30" value="${d.configuracao.variacaoDeterioracao}" required>
+              <label>Variação de deterioração</label>
+              <input name="variacaoDeterioração" type="number" min="1" max="30" value="${d.configuracao.variacaoDeterioracao}" required>
             </div>
           </div>
           <div class="actions">
-            <button class="button" type="submit">Guardar configuracao</button>
+            <button class="button" type="submit">Guardar configuração</button>
             <button class="button secondary" type="button" id="seed-button">Repor dados simulados</button>
           </div>
         </form>
@@ -766,13 +765,13 @@ function renderAdmin() {
           </div>
           <div class="form-grid two">
             <div class="field">
-              <label>Medico responsavel</label>
+              <label>Médico responsável</label>
               <select name="medicoId" required>
                 ${state.medicos.map((medico) => `<option value="${medico.id}">${escapeHtml(medico.user.nome)} | ${escapeHtml(medico.especialidade)}</option>`).join("")}
               </select>
             </div>
             <div class="field">
-              <label>Diagnosticos separados por virgula</label>
+              <label>Diagnósticos separados por vírgula</label>
               <input name="diagnosticos" placeholder="Asma, Rinite">
             </div>
           </div>
@@ -799,11 +798,11 @@ function renderAdmin() {
               <input name="especialidade" required>
             </div>
             <div class="field">
-              <label>Cedula</label>
-              <input name="cedula">
+              <label>Cédula</label>
+              <input name="cédula">
             </div>
           </div>
-          <button class="button" type="submit">Criar medico</button>
+          <button class="button" type="submit">Criar médico</button>
         </form>
       </section>
     </div>
@@ -882,7 +881,7 @@ function bindViewEvents() {
       const payload = formDataObject(loginForm);
       try {
         await loginWithCredentials(payload.email, payload.password);
-        showToast("Sessao iniciada.");
+        showToast("Sessão iniciada.");
       } catch (error) {
         showToast(error.message);
       }
@@ -938,7 +937,7 @@ function bindViewEvents() {
       });
       await refreshDashboard();
       render();
-      showToast("Avaliacao CARAT submetida e dashboard atualizado.");
+      showToast("Avaliação CARAT submetida e dashboard atualizado.");
     });
   }
 
@@ -975,7 +974,7 @@ function bindViewEvents() {
         body: JSON.stringify({
           estado,
           autorId: state.session.user.id,
-          nota: estado === "FECHADO" ? "Alerta fechado pelo medico." : `Estado alterado para ${estado}.`
+          nota: estado === "FECHADO" ? "Alerta fechado pelo médico." : `Estado alterado para ${estado}.`
         })
       });
       await refreshDashboard();
@@ -1000,7 +999,7 @@ function bindViewEvents() {
       medicacaoForm.reset();
       await refreshDashboard();
       render();
-      showToast("Medicacao registada.");
+      showToast("Medicação registada.");
     });
   }
 
@@ -1037,7 +1036,7 @@ function bindViewEvents() {
       });
       await refreshDashboard();
       render();
-      showToast("Configuracao atualizada.");
+      showToast("Configuração atualizada.");
     });
   }
 
@@ -1087,7 +1086,7 @@ function bindViewEvents() {
       createMedicoForm.reset();
       await refreshDashboard();
       render();
-      showToast("Medico criado.");
+      showToast("Médico criado.");
     });
   }
 }

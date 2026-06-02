@@ -22,7 +22,7 @@ class DashboardService {
     const data = store.read();
     const utente = data.utentes.find((candidate) => candidate.id === Number(utenteId));
     if (!utente) {
-      const error = new Error("Utente nao encontrado.");
+      const error = new Error("Utente não encontrado.");
       error.statusCode = 404;
       throw error;
     }
@@ -73,7 +73,7 @@ class DashboardService {
     const data = store.read();
     const medico = data.medicos.find((candidate) => candidate.id === Number(medicoId));
     if (!medico) {
-      const error = new Error("Medico nao encontrado.");
+      const error = new Error("Médico não encontrado.");
       error.statusCode = 404;
       throw error;
     }

@@ -2,7 +2,7 @@ const store = require("../database/sqliteStore");
 
 function validateClinicalPayload(payload) {
   if (!payload.utenteId || !payload.medicoId || !payload.nome) {
-    const error = new Error("Utente, medico e nome sao obrigatorios.");
+    const error = new Error("Utente, médico e nome são obrigatórios.");
     error.statusCode = 400;
     throw error;
   }
@@ -46,7 +46,7 @@ class ClinicoService {
   criarExame(payload) {
     validateClinicalPayload(payload);
     if (!payload.codigo || String(payload.codigo).length !== 4) {
-      const error = new Error("O codigo do exame deve ter exatamente 4 caracteres.");
+      const error = new Error("O código do exame deve ter exatamente 4 caracteres.");
       error.statusCode = 400;
       throw error;
     }

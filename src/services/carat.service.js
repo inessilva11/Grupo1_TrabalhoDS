@@ -8,7 +8,7 @@ class CaratService {
       perguntas: CARAT_QUESTIONS,
       opcoes: ANSWER_OPTIONS,
       opcoesMedicacao: MEDICATION_ANSWER_OPTIONS,
-      escala: "3 representa melhor controlo; 0 representa maior frequencia ou agravamento."
+      escala: "3 representa melhor controlo; 0 representa maior frequência ou agravamento."
     };
   }
 
@@ -26,7 +26,7 @@ class CaratService {
     const utenteId = Number(payload.utenteId);
     const utente = data.utentes.find((candidate) => candidate.id === utenteId);
     if (!utente) {
-      const error = new Error("Utente nao encontrado para a avaliacao CARAT.");
+      const error = new Error("Utente não encontrado para a avaliação CARAT.");
       error.statusCode = 404;
       throw error;
     }
@@ -55,7 +55,7 @@ class CaratService {
     const alertasGerados = alertaService.gerarParaAvaliacao(data, avaliacao, anteriores[0] || null);
 
     store.write(data);
-    store.addAudit(payload.atorId || utente.userId, "CRIAR_AVALIACAO_CARAT", `Avaliacao CARAT ${avaliacao.id} criada para utente ${utenteId}.`);
+    store.addAudit(payload.atorId || utente.userId, "CRIAR_AVALIACAO_CARAT", `Avaliação CARAT ${avaliacao.id} criada para utente ${utenteId}.`);
 
     return {
       avaliacao,
