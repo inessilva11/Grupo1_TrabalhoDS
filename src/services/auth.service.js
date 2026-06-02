@@ -10,7 +10,7 @@ class AuthService {
     });
 
     if (!user || !user.ativo) {
-      const error = new Error("Credenciais invalidas ou utilizador inativo.");
+      const error = new Error("Credenciais inválidas ou utilizador inativo.");
       error.statusCode = 401;
       throw error;
     }
@@ -33,7 +33,7 @@ class AuthService {
     };
     data.sessions.push(session);
     store.write(data);
-    store.addAudit(user.id, "LOGIN", `Sessao iniciada por ${user.email}.`);
+    store.addAudit(user.id, "LOGIN", `Sessão iniciada por ${user.email}.`);
 
     return {
       user: publicUser(user),
@@ -99,7 +99,7 @@ class AuthService {
 
   findValidSession(data, token) {
     if (!token) {
-      const error = new Error("Sessao em falta.");
+      const error = new Error("Sessão em falta.");
       error.statusCode = 401;
       throw error;
     }
@@ -110,7 +110,7 @@ class AuthService {
       return candidate.token === token && candidate.id === Number(payload.sid) && candidate.userId === Number(payload.sub);
     });
     if (!session) {
-      const error = new Error("Sessao invalida ou expirada.");
+      const error = new Error("Sessão inválida ou expirada.");
       error.statusCode = 401;
       throw error;
     }

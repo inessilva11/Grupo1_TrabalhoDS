@@ -69,7 +69,7 @@ function verifyJwt(token) {
     crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
 
   if (!validSignature) {
-    throwJwtError("Assinatura JWT invalida.");
+    throwJwtError("Assinatura JWT inválida.");
   }
 
   const header = JSON.parse(base64UrlDecode(encodedHeader).toString("utf8"));

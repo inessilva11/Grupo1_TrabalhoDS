@@ -18,7 +18,7 @@ class FhirService {
     const avaliacao = data.caratAvaliacoes.find((candidate) => candidate.id === localId);
 
     if (!avaliacao) {
-      const error = new Error("Observation FHIR nao encontrada.");
+      const error = new Error("Observation FHIR não encontrada.");
       error.statusCode = 404;
       throw error;
     }
@@ -33,7 +33,7 @@ class FhirService {
     const id = Number(withoutPrefix);
 
     if (!Number.isInteger(id) || id <= 0) {
-      const error = new Error(`Identificador FHIR invalido: ${value}`);
+      const error = new Error(`Identificador FHIR inválido: ${value}`);
       error.statusCode = 400;
       throw error;
     }

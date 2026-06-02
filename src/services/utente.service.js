@@ -49,7 +49,7 @@ class UtenteService {
     const data = store.read();
     const utente = data.utentes.find((candidate) => candidate.id === Number(id));
     if (!utente) {
-      const error = new Error("Utente nao encontrado.");
+      const error = new Error("Utente não encontrado.");
       error.statusCode = 404;
       throw error;
     }
@@ -60,12 +60,12 @@ class UtenteService {
     const data = store.read();
     const email = normalizeEmail(payload.email);
     if (!payload.nome || !email || !payload.medicoId) {
-      const error = new Error("Nome, email e medico responsavel sao obrigatorios.");
+      const error = new Error("Nome, email e médico responsável sao obrigatórios.");
       error.statusCode = 400;
       throw error;
     }
     if (data.users.some((user) => normalizeEmail(user.email) === email)) {
-      const error = new Error("Ja existe um utilizador com esse email.");
+      const error = new Error("Já existe um utilizador com esse email.");
       error.statusCode = 400;
       throw error;
     }
@@ -104,7 +104,7 @@ class UtenteService {
     const data = store.read();
     const utente = data.utentes.find((candidate) => candidate.id === Number(id));
     if (!utente) {
-      const error = new Error("Utente nao encontrado.");
+      const error = new Error("Utente não encontrado.");
       error.statusCode = 404;
       throw error;
     }

@@ -16,7 +16,7 @@ class AdminService {
       throw error;
     }
     if (!Number.isFinite(variacao) || variacao < 1 || variacao > 30) {
-      const error = new Error("A variacao de deterioracao deve estar entre 1 e 30.");
+      const error = new Error("A variação de deterioração deve estar entre 1 e 30.");
       error.statusCode = 400;
       throw error;
     }
@@ -30,7 +30,7 @@ class AdminService {
     };
 
     store.write(data);
-    store.addAudit(payload.atorId, "ATUALIZAR_CONFIGURACAO", `Limiar ${limiar}; deterioracao ${variacao}.`);
+    store.addAudit(payload.atorId, "ATUALIZAR_CONFIGURACAO", `Limiar ${limiar}; deteriorição ${variacao}.`);
     return store.read().configuracao;
   }
 

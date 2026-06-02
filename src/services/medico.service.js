@@ -30,7 +30,7 @@ class MedicoService {
     const data = store.read();
     const medico = data.medicos.find((candidate) => candidate.id === Number(id));
     if (!medico) {
-      const error = new Error("Medico nao encontrado.");
+      const error = new Error("Médico não encontrado.");
       error.statusCode = 404;
       throw error;
     }
@@ -41,12 +41,12 @@ class MedicoService {
     const data = store.read();
     const email = normalizeEmail(payload.email);
     if (!payload.nome || !email || !payload.especialidade) {
-      const error = new Error("Nome, email e especialidade sao obrigatorios.");
+      const error = new Error("Nome, email e especialidade sao obrigatórios.");
       error.statusCode = 400;
       throw error;
     }
     if (data.users.some((user) => normalizeEmail(user.email) === email)) {
-      const error = new Error("Ja existe um utilizador com esse email.");
+      const error = new Error("Já existe um utilizador com esse email.");
       error.statusCode = 400;
       throw error;
     }
@@ -66,7 +66,7 @@ class MedicoService {
       userId: user.id,
       cedula: payload.cedula || "",
       especialidade: payload.especialidade,
-      unidade: payload.unidade || "Clinica SauDInoB"
+      unidade: payload.unidade || "Clínica SauDInoB"
     };
 
     data.users.push(user);
@@ -80,7 +80,7 @@ class MedicoService {
     const data = store.read();
     const medico = data.medicos.find((candidate) => candidate.id === Number(id));
     if (!medico) {
-      const error = new Error("Medico nao encontrado.");
+      const error = new Error("Médico não encontrado.");
       error.statusCode = 404;
       throw error;
     }
