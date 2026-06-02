@@ -14,8 +14,11 @@ const state = {
   adminUsers: [],
   medicos: [],
   fhirPayload: null,
-  formMessages: {
-    createUtente: null
+   formMessages: {
+    profileUtente: null,
+    profileMedico: null,
+    createUtente: null,
+    createMedico: null
   },
   caratFilters: {
     dataInicio: "",
@@ -77,6 +80,29 @@ function renderFormMessage(key) {
 
 function missingRequiredField(payload, fields) {
   return fields.find((field) => !String(payload[field.name] || "").trim());
+}
+
+function preparePasswordChange(payload) {
+  const password = String(payload.password || "").trim();
+  const confirmarPassword = String(payload.confirmarPassword || "").trim();
+
+  delete payload.confirmarPassword;
+
+  if (!password && !confirmarPassword) {
+    delete payload.password;
+    return null;
+  }
+
+  if (password.length < 6) {
+    return "A nova palavra-passe deve ter pelo menos 6 caracteres.";
+  }
+
+  if (password !== confirmarPassword) {
+    return "A confirmação da palavra-passe não coincide.";
+  }
+
+  payload.password = password;
+  return null;
 }
 
 async function api(path, options = {}) {
@@ -697,8 +723,9 @@ function renderUtente() {
 
     <div class="grid two">
       <section class="panel">
-        <h2>Perfil e plano clinico</h2>
+       <h2>Perfil e plano clinico</h2>
         <form id="profile-form" class="form-grid">
+          <div data-form-message="profileUtente">${renderFormMessage("profileUtente")}</div>
           <div class="field">
             <label>Nome</label>
             <input name="nome" value="${escapeHtml(d.perfil.user.nome)}" required>
@@ -724,7 +751,17 @@ function renderUtente() {
             </div>
             <div class="field">
               <label>Estado civil</label>
-              <input name="estadoCivil" value="${escapeHtml(d.perfil.estadoCivil)}">
+                            <input name="estadoCivil" value="${escapeHtml(d.perfil.estadoCivil)}">
+            </div>
+          </div>
+          <div class="form-grid two">
+            <div class="field">
+              <label>Nova palavra-passe</label>
+               <input name="password" type="password" autocomplete="new-password" placeholder="Deixar vazio para manter">
+            </div>
+            <div class="field">
+              <label>Confirmar palavra-passe</label>
+              <input name="confirmarPassword" type="password" autocomplete="new-password">
             </div>
           </div>
           <button class="button" type="submit">Atualizar perfil</button>
@@ -827,12 +864,64 @@ function renderMedico() {
   const patient = selected?.perfil;
 
   return `
-    <div class="metric-row">
+        <div class="metric-row">
       ${metric("Utentes", d.resumo.utentes)}
       ${metric("Alertas novos", d.resumo.alertasNovos)}
       ${metric("Alertas ativos", d.resumo.alertasAtivos)}
       ${metric("Limiar CARAT", d.configuracao.limiarControloInsuficiente)}
     </div>
+
+    <section class="panel">
+      <h2>Perfil do médico</h2>
+      <form id="medico-profile-form" class="form-grid">
+        <div data-form-message="profileMedico">${renderFormMessage("profileMedico")}</div>
+        <div class="form-grid two">
+          <div class="field">
+            <label>Nome</label>
+            <input name="nome" value="${escapeHtml(d.medico.user.nome)}" required>
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input name="email" type="email" value="${escapeHtml(d.medico.user.email)}" required>
+          </div>
+        </div>
+        <div class="form-grid two">
+          <div class="field">
+            <label>Telefone</label>
+            <input name="telefone" value="${escapeHtml(d.medico.user.telefone)}">
+          </div>
+          <div class="field">
+            <label>Morada</label>
+            <input name="morada" value="${escapeHtml(d.medico.user.morada)}">
+          </div>
+        </div>
+        <div class="form-grid two">
+          <div class="field">
+            <label>Especialidade</label>
+            <input name="especialidade" value="${escapeHtml(d.medico.especialidade)}" required>
+          </div>
+          <div class="field">
+            <label>Cédula</label>
+            <input name="cedula" value="${escapeHtml(d.medico.cedula)}">
+          </div>
+        </div>
+        <div class="field">
+          <label>Unidade</label>
+          <input name="unidade" value="${escapeHtml(d.medico.unidade)}">
+        </div>
+        <div class="form-grid two">
+          <div class="field">
+            <label>Nova palavra-passe</label>
+            <input name="password" type="password" autocomplete="new-password" placeholder="Deixar vazio para manter">
+          </div>
+          <div class="field">
+            <label>Confirmar palavra-passe</label>
+            <input name="confirmarPassword" type="password" autocomplete="new-password">
+          </div>
+        </div>
+        <button class="button" type="submit">Atualizar perfil</button>
+      </form>
+    </section>
 
     <div class="grid two">
       <section class="panel">
@@ -966,7 +1055,8 @@ function renderAdmin() {
       </section>
     </div>
 
-   <section class="panel">
+    <div class="grid two">
+      <section class="panel">
         <h2>Criar utente</h2>
         <form id="create-utente-form" class="form-grid" novalidate>
           <div data-form-message="createUtente">${renderFormMessage("createUtente")}</div>
@@ -982,33 +1072,39 @@ function renderAdmin() {
           </div>
           <div class="form-grid two">
             <div class="field">
-              <label>Médico responsável</label>
-              <select name="medicoId" required>
-                ${state.medicos.map((medico) => `<option value="${medico.id}">${escapeHtml(medico.user.nome)} | ${escapeHtml(medico.especialidade)}</option>`).join("")}
-              </select>
+              <label>Profissão</label>
+              <input name="profissao" required>
             </div>
             <div class="field">
               <label>Data de nascimento</label>
               <input name="dataNascimento" type="date" required>
             </div>
           </div>
-          <label>Número de telemóvel</label>
-              <input name="telefone" type="tel" placeholder="912345678" required>
+          <div class="form-grid two">
+            <div class="field">
+              <label>Estado civil</label>
+              <input name="estadoCivil" required>
             </div>
             <div class="field">
-              <label>Morada</label>
-              <input name="morada" required>
+              <label>Número de telemóvel</label>
+              <input name="telefone" type="tel" placeholder="912345678" required>
             </div>
           </div>
           <div class="form-grid two">
             <div class="field">
-              <label>Profissão</label>
-              <input name="profissao" required>
+              <label>Morada</label>
+              <input name="morada" required>
             </div>
             <div class="field">
               <label>Diagnósticos separados por vírgula</label>
               <input name="diagnosticos" placeholder="Asma, Rinite">
             </div>
+          </div>
+          <div class="field">
+            <label>Médico responsável</label>
+            <select name="medicoId" required>
+              ${state.medicos.map((medico) => `<option value="${medico.id}">${escapeHtml(medico.user.nome)} | ${escapeHtml(medico.especialidade)}</option>`).join("")}
+            </select>
           </div>
           <button class="button" type="submit">Criar utente</button>
         </form>
@@ -1016,7 +1112,8 @@ function renderAdmin() {
 
       <section class="panel">
         <h2>Criar medico</h2>
-        <form id="create-medico-form" class="form-grid">
+        <form id="create-medico-form" class="form-grid" novalidate>
+          <div data-form-message="createMedico">${renderFormMessage("createMedico")}</div>
           <div class="form-grid two">
             <div class="field">
               <label>Nome</label>
@@ -1034,7 +1131,17 @@ function renderAdmin() {
             </div>
             <div class="field">
               <label>Cédula</label>
-              <input name="cédula">
+              <input name="cedula">
+            </div>
+          </div>
+          <div class="form-grid two">
+            <div class="field">
+              <label>Número de telemóvel</label>
+              <input name="telefone" type="tel" placeholder="912345678" required>
+            </div>
+            <div class="field">
+              <label>Morada</label>
+              <input name="morada" required>
             </div>
           </div>
           <button class="button" type="submit">Criar médico</button>
@@ -1228,16 +1335,63 @@ function bindViewEvents() {
   if (profileForm) {
     profileForm.addEventListener("submit", async (event) => {
       event.preventDefault();
-      await api(`/api/utentes/${state.session.profile.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          ...formDataObject(profileForm),
-          atorId: state.session.user.id
-        })
-      });
-      await refreshDashboard();
-      render();
-      showToast("Perfil atualizado.");
+      const payload = formDataObject(profileForm);
+      const passwordError = preparePasswordChange(payload);
+      if (passwordError) {
+        setFormMessage("profileUtente", passwordError, "error");
+        return;
+      }
+
+      payload.atorId = state.session.user.id;
+      setFormMessage("profileUtente", "A atualizar perfil...", "info");
+
+      try {
+        await api(`/api/utentes/${state.session.profile.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload)
+        });
+        persistSession(await api("/api/auth/me"));
+        await refreshDashboard();
+        updateShell();
+        render();
+        setFormMessage("profileUtente", "Perfil atualizado.", "success");
+        showToast("Perfil atualizado.");
+      } catch (error) {
+        setFormMessage("profileUtente", error.message, "error");
+        showToast(error.message);
+      }
+    });
+  }
+
+  const medicoProfileForm = document.querySelector("#medico-profile-form");
+  if (medicoProfileForm) {
+    medicoProfileForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const payload = formDataObject(medicoProfileForm);
+      const passwordError = preparePasswordChange(payload);
+      if (passwordError) {
+        setFormMessage("profileMedico", passwordError, "error");
+        return;
+      }
+
+      payload.atorId = state.session.user.id;
+      setFormMessage("profileMedico", "A atualizar perfil...", "info");
+
+      try {
+        await api(`/api/medicos/${state.session.profile.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload)
+        });
+        persistSession(await api("/api/auth/me"));
+        await refreshDashboard();
+        updateShell();
+        render();
+        setFormMessage("profileMedico", "Perfil atualizado.", "success");
+        showToast("Perfil atualizado.");
+      } catch (error) {
+        setFormMessage("profileMedico", error.message, "error");
+        showToast(error.message);
+      }
     });
   }
 
@@ -1342,11 +1496,12 @@ function bindViewEvents() {
       const missing = missingRequiredField(payload, [
         { name: "nome", label: "Nome" },
         { name: "email", label: "Email" },
-        { name: "medicoId", label: "Medico responsavel" },
+        { name: "profissao", label: "Profissao" },
         { name: "dataNascimento", label: "Data de nascimento" },
+        { name: "estadoCivil", label: "Estado civil" },
         { name: "telefone", label: "Numero de telemovel" },
         { name: "morada", label: "Morada" },
-        { name: "profissao", label: "Profissao" }
+        { name: "medicoId", label: "Medico responsavel" }
       ]);
 
       if (missing) {
@@ -1382,20 +1537,41 @@ function bindViewEvents() {
   if (createMedicoForm) {
     createMedicoForm.addEventListener("submit", async (event) => {
       event.preventDefault();
-      await api("/api/medicos", {
-        method: "POST",
-        body: JSON.stringify({
-          ...formDataObject(createMedicoForm),
-          atorId: state.session.user.id
-        })
-      });
-      createMedicoForm.reset();
-      await refreshDashboard();
-      render();
-      showToast("Médico criado.");
+      const payload = formDataObject(createMedicoForm);
+      const missing = missingRequiredField(payload, [
+        { name: "nome", label: "Nome" },
+        { name: "email", label: "Email" },
+        { name: "especialidade", label: "Especialidade" },
+        { name: "telefone", label: "Numero de telemovel" },
+        { name: "morada", label: "Morada" }
+      ]);
+
+      if (missing) {
+        setFormMessage("createMedico", `${missing.label} e obrigatorio.`, "error");
+        return;
+      }
+
+      payload.atorId = state.session.user.id;
+      setFormMessage("createMedico", "A criar medico...", "info");
+
+      try {
+        await api("/api/medicos", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        createMedicoForm.reset();
+        await refreshDashboard();
+        render();
+        setFormMessage("createMedico", `Medico criado: ${payload.email}`, "success");
+        showToast("Médico criado.");
+      } catch (error) {
+        setFormMessage("createMedico", error.message, "error");
+        showToast(error.message);
+      }
     });
   }
 }
+
 
 document.querySelectorAll("[data-login-role]").forEach((button) => {
   button.addEventListener("click", () => loginAs(button.dataset.loginRole));

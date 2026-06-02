@@ -182,13 +182,13 @@ class SqliteStore {
   }
 
    ensureColumns() {
-    this.ensureColumn("users", "telefone", "TEXT");
     this.ensureColumn("users", "morada", "TEXT");
     this.ensureColumn("utentes", "dataNascimento", "TEXT");
     this.ensureColumn("utentes", "profissao", "TEXT");
+    this.ensureColumn("utentes", "estadoCivil", "TEXT");
     this.ensureColumn("caratAvaliacoes", "comentarios", "TEXT NOT NULL DEFAULT ''");
   }
-
+  
   ensureColumn(table, column, definition) {
     const columns = this.db.prepare(`PRAGMA table_info(${table})`).all();
     if (!columns.some((item) => item.name === column)) {

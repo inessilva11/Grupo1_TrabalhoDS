@@ -1,6 +1,10 @@
 const store = require("../database/sqliteStore");
 const { normalizeEmail, publicUser, ROLES } = require("../models/utilizador.model");
 
+function normalizeText(value) {
+  return String(value || "").trim();
+}
+
 function enrichMedico(data, medico) {
   const user = data.users.find((candidate) => candidate.id === medico.userId);
   const utentes = data.utentes
@@ -40,8 +44,13 @@ class MedicoService {
   criar(payload) {
     const data = store.read();
     const email = normalizeEmail(payload.email);
-    if (!payload.nome || !email || !payload.especialidade) {
-      const error = new Error("Nome, email e especialidade sao obrigatórios.");
+    const nome = normalizeText(payload.nome);
+    const especialidade = normalizeText(payload.especialidade);
+    const telefone = normalizeText(payload.telefone);
+    const morada = normalizeText(payload.morada);
+
+    if (!nome || !email || !especialidade || !telefone || !morada) {
+      const error = new Error("Nome, email, especialidade, telemóvel e morada sao obrigatórios.");
       error.statusCode = 400;
       throw error;
     }
@@ -53,20 +62,20 @@ class MedicoService {
 
     const user = {
       id: store.nextId("users"),
-      nome: String(payload.nome).trim(),
+      nome,
       email,
       password: payload.password || "medico123",
       role: ROLES.MEDICO,
       ativo: true,
-      telefone: payload.telefone || "",
-      morada: payload.morada || ""
+      telefone,
+      morada
     };
     const medico = {
       id: store.nextId("medicos"),
       userId: user.id,
-      cedula: payload.cedula || "",
-      especialidade: payload.especialidade,
-      unidade: payload.unidade || "Clínica SauDInoB"
+      cedula: normalizeText(payload.cedula),
+      especialidade,
+      unidade: normalizeText(payload.unidade) || "Clínica SauDInoB"
     };
 
     data.users.push(user);
@@ -97,6 +106,15 @@ class MedicoService {
       }
       if (payload.ativo !== undefined) {
         user.ativo = Boolean(payload.ativo);
+      }
+      if (payload.password !== undefined) {
+        const password = normalizeText(payload.password);
+        if (password.length < 6) {
+          const error = new Error("A nova palavra-passe deve ter pelo menos 6 caracteres.");
+          error.statusCode = 400;
+          throw error;
+        }
+        user.password = password;
       }
     }
 

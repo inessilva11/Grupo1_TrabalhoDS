@@ -66,11 +66,12 @@ class UtenteService {
     const nome = normalizeText(payload.nome);
     const dataNascimento = normalizeText(payload.dataNascimento);
     const profissao = normalizeText(payload.profissao);
+    const estadoCivil = normalizeText(payload.estadoCivil);
     const telefone = normalizeText(payload.telefone);
     const morada = normalizeText(payload.morada);
 
-if (!nome || !email || !payload.medicoId || !dataNascimento || !profissao || !telefone || !morada) {
-      const error = new Error("Nome, email, médico responsável, data de nascimento, profissão, telemóvel e morada sao obrigatórios.");
+    if (!nome || !email || !payload.medicoId || !dataNascimento || !profissao || !estadoCivil || !telefone || !morada) {
+      const error = new Error("Nome, email, médico responsável, data de nascimento, profissão, estado civil, telemóvel e morada sao obrigatórios.");
       error.statusCode = 400;
       throw error;
     }
@@ -98,7 +99,7 @@ if (!nome || !email || !payload.medicoId || !dataNascimento || !profissao || !te
       numeroProcesso: payload.numeroProcesso || `UT-2026-${String(store.nextId("utentes")).padStart(3, "0")}`,
       dataNascimento,
       profissao,
-      estadoCivil: normalizeText(payload.estadoCivil),
+      estadoCivil,
       diagnosticos: Array.isArray(payload.diagnosticos) ? payload.diagnosticos : [],
       notasClinicas: normalizeText(payload.notasClinicas)
     };
@@ -131,6 +132,15 @@ if (!nome || !email || !payload.medicoId || !dataNascimento || !profissao || !te
       }
       if (payload.ativo !== undefined) {
         user.ativo = Boolean(payload.ativo);
+      }
+      if (payload.password !== undefined) {
+        const password = normalizeText(payload.password);
+        if (password.length < 6) {
+          const error = new Error("A nova palavra-passe deve ter pelo menos 6 caracteres.");
+          error.statusCode = 400;
+          throw error;
+        }
+        user.password = password;
       }
     }
 
