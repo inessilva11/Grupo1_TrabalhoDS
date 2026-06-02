@@ -6,23 +6,16 @@ const authRoutes = require("./routes/auth.routes");
 const utenteRoutes = require("./routes/utente.routes");
 const medicoRoutes = require("./routes/medico.routes");
 const caratRoutes = require("./routes/carat.routes");
+const sintomaRoutes = require("./routes/sintoma.routes");
 const alertaRoutes = require("./routes/alerta.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const clinicoRoutes = require("./routes/clinico.routes");
-const sintomaRoutes = require("./routes/sintoma.routes");
 const adminRoutes = require("./routes/admin.routes");
 const fhirRoutes = require("./routes/fhir.routes");
 
 const app = express();
 const apiRouter = express.Router();
-
-app.use(express.json({ limit: "1mb" }));
-const publicDir = path.join(__dirname, "..", "/public");
-app.use(express.static(publicDir));
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(publicDir, "index.html"));
-});
+const publicDir = path.join(__dirname, "..", "public");
 
 app.use((req, res, next) => {
   res.set({
@@ -39,16 +32,18 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(express.json({ limit: "1mb" }));
+app.use(express.static(publicDir));
 
 [
   authRoutes,
   utenteRoutes,
   medicoRoutes,
   caratRoutes,
+  sintomaRoutes,
   alertaRoutes,
   dashboardRoutes,
   clinicoRoutes,
-  sintomaRoutes,
   adminRoutes,
   fhirRoutes
 ].forEach((register) => register(apiRouter));
@@ -79,7 +74,7 @@ app.use((error, req, res, next) => {
 if (require.main === module) {
   const port = Number(process.env.PORT) || 3000;
   app.listen(port, () => {
-    console.log(`SauDInoB Express MVC a correr em http://localhost:${port}`);
+    console.log(`SauDInoB a correr em http://localhost:${port}`);
   });
 }
 

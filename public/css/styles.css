@@ -623,6 +623,36 @@ h3 {
   height: 230px;
 }
 
+.filter-form {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcf9;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.compact-table {
+  margin-top: 12px;
+}
+
+.compact-table table {
+  min-width: 560px;
+}
+
+.symptom-form {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -742,6 +772,7 @@ th {
   .grid.three,
   .metric-row,
   .form-grid.two,
+  .filter-grid,
   .carat-score-board,
   .login-grid {
     grid-template-columns: 1fr;

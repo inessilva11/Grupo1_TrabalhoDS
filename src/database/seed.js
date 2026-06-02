@@ -152,6 +152,41 @@ function seedData() {
         data: iso(7)
       }
     ],
+        sintomas: [
+      {
+        id: 1,
+        utenteId: 1,
+        avaliacaoId: 2,
+        nome: "Falta de ar",
+        intensidade: "Intensa",
+        dataInicio: iso(5),
+        dataFim: null,
+        observacoes: "Mais evidente ao subir escadas.",
+        criadoEm: iso(5)
+      },
+      {
+        id: 2,
+        utenteId: 1,
+        avaliacaoId: 2,
+        nome: "Pieira",
+        intensidade: "Moderada",
+        dataInicio: iso(4),
+        dataFim: null,
+        observacoes: "Agravamento durante a noite.",
+        criadoEm: iso(4)
+      },
+      {
+        id: 3,
+        utenteId: 2,
+        avaliacaoId: 3,
+        nome: "Tosse ocasional",
+        intensidade: "Ligeira",
+        dataInicio: iso(8),
+        dataFim: iso(6),
+        observacoes: "Resolvida sem necessidade de contacto clinico.",
+        criadoEm: iso(8)
+      }
+    ],
     alertas: [
       {
         id: 1,

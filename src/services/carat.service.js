@@ -2,6 +2,11 @@ const store = require("../database/sqliteStore");
 const alertaService = require("./alerta.service");
 const { CARAT_QUESTIONS, ANSWER_OPTIONS, MEDICATION_ANSWER_OPTIONS, calculateScores } = require("../models/carat.model");
 
+function nextIdFromData(data, collectionName) {
+  const collection = data[collectionName] || [];
+  return collection.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1;
+}
+
 class CaratService {
   obterQuestionario() {
     return {
@@ -36,6 +41,7 @@ class CaratService {
       .filter((avaliacao) => avaliacao.utenteId === utenteId)
       .sort((a, b) => new Date(b.data) - new Date(a.data));
 
+    const sintomasReportados = Array.isArray(payload.sintomas) ? payload.sintomas.filter(Boolean) : [];
     const avaliacao = {
       id: store.nextId("caratAvaliacoes"),
       utenteId,
@@ -46,12 +52,28 @@ class CaratService {
       scoreInferior: calculo.scoreInferior,
       interpretacao: calculo.interpretacao,
       recomendacoes: calculo.recomendacoes,
-      sintomas: Array.isArray(payload.sintomas) ? payload.sintomas.filter(Boolean) : [],
+      sintomas: sintomasReportados,
       comentarios: String(payload.comentarios || "").trim(),
       data: new Date().toISOString()
     };
 
     data.caratAvaliacoes.push(avaliacao);
+    data.sintomas = data.sintomas || [];
+    const primeiroSintomaId = nextIdFromData(data, "sintomas");
+    sintomasReportados.forEach((nome, index) => {
+      data.sintomas.push({
+        id: primeiroSintomaId + index,
+        utenteId,
+        avaliacaoId: avaliacao.id,
+        nome: String(nome).trim(),
+        intensidade: "Nao especificada",
+        dataInicio: avaliacao.data,
+        dataFim: null,
+        observacoes: avaliacao.comentarios,
+        criadoEm: avaliacao.data
+      });
+    });
+    
     const alertasGerados = alertaService.gerarParaAvaliacao(data, avaliacao, anteriores[0] || null);
 
     store.write(data);

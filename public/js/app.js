@@ -13,7 +13,14 @@ const state = {
   selectedUtenteDashboard: null,
   adminUsers: [],
   medicos: [],
-  fhirPayload: null
+  fhirPayload: null,
+  caratFilters: {
+    dataInicio: "",
+    dataFim: "",
+    interpretacao: "",
+    scoreMin: "",
+    scoreMax: ""
+  }
 };
 
 const app = document.querySelector("#app");
@@ -221,6 +228,16 @@ function stateKind(alertState) {
   return alertState === "FECHADO" ? "closed" : "";
 }
 
+function intensityKind(intensidade) {
+  if (intensidade === "Intensa") {
+    return "high";
+  }
+  if (intensidade === "Moderada") {
+    return "medium";
+  }
+  return "";
+}
+
 function renderScoreChart(avaliacoes, config) {
   const items = [...avaliacoes].sort((a, b) => new Date(a.data) - new Date(b.data)).slice(-8);
   if (items.length === 0) {
@@ -264,11 +281,176 @@ function renderScoreChart(avaliacoes, config) {
   `;
 }
 
+function filterAvaliacoes(avaliacoes) {
+  const { dataInicio, dataFim, interpretacao, scoreMin, scoreMax } = state.caratFilters;
+  const min = scoreMin === "" ? null : Number(scoreMin);
+  const max = scoreMax === "" ? null : Number(scoreMax);
+  const start = dataInicio ? new Date(`${dataInicio}T00:00:00`) : null;
+  const end = dataFim ? new Date(`${dataFim}T23:59:59`) : null;
+
+  return avaliacoes.filter((avaliacao) => {
+    const date = new Date(avaliacao.data);
+    return (
+      (!start || date >= start) &&
+      (!end || date <= end) &&
+      (!interpretacao || avaliacao.interpretacao === interpretacao) &&
+      (min === null || avaliacao.scoreTotal >= min) &&
+      (max === null || avaliacao.scoreTotal <= max)
+    );
+  });
+}
+
+function renderCaratFilters(avaliacoes) {
+  const interpretations = [...new Set(avaliacoes.map((avaliacao) => avaliacao.interpretacao).filter(Boolean))];
+  const filters = state.caratFilters;
+
+  return `
+    <form id="carat-filter-form" class="filter-form">
+      <div class="filter-grid">
+        <div class="field">
+          <label>Data inicio</label>
+          <input name="dataInicio" type="date" value="${escapeHtml(filters.dataInicio)}">
+        </div>
+        <div class="field">
+          <label>Data fim</label>
+          <input name="dataFim" type="date" value="${escapeHtml(filters.dataFim)}">
+        </div>
+        <div class="field">
+          <label>Interpretacao</label>
+          <select name="interpretacao">
+            <option value="">Todas</option>
+            ${interpretations
+              .map((item) => `<option value="${escapeHtml(item)}" ${filters.interpretacao === item ? "selected" : ""}>${escapeHtml(item)}</option>`)
+              .join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label>Score min.</label>
+          <input name="scoreMin" type="number" min="0" max="30" value="${escapeHtml(filters.scoreMin)}">
+        </div>
+        <div class="field">
+          <label>Score max.</label>
+          <input name="scoreMax" type="number" min="0" max="30" value="${escapeHtml(filters.scoreMax)}">
+        </div>
+      </div>
+      <div class="actions">
+        <button class="button secondary" type="submit">Aplicar filtros</button>
+        <button class="button secondary" type="button" id="clear-carat-filters">Limpar filtros</button>
+      </div>
+    </form>
+  `;
+}
+
+function renderAvaliacoesHistorico(avaliacoes) {
+  if (!avaliacoes.length) {
+    return `<div class="empty">Nenhuma avaliacao corresponde aos filtros escolhidos.</div>`;
+  }
+
+  return `
+    <div class="table-wrap compact-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Score</th>
+            <th>V. sup.</th>
+            <th>V. inf.</th>
+            <th>Interpretacao</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${avaliacoes
+            .map((avaliacao) => `
+              <tr>
+                <td>${formatDate(avaliacao.data)}</td>
+                <td>${avaliacao.scoreTotal}/30</td>
+                <td>${avaliacao.scoreSuperior}/12</td>
+                <td>${avaliacao.scoreInferior}/18</td>
+                <td>${escapeHtml(avaliacao.interpretacao)}</td>
+              </tr>
+            `)
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderSintomasList(sintomas) {
+  if (!sintomas?.length) {
+    return `<div class="empty">Sem sintomas reportados.</div>`;
+  }
+
+  return `
+    <div class="list">
+      ${sintomas
+        .map((sintoma) => `
+          <article class="list-item">
+            <div class="item-head">
+              <div>
+                <strong>${escapeHtml(sintoma.nome)}</strong>
+                <span>${formatDate(sintoma.dataInicio)}${sintoma.dataFim ? ` - ${formatDate(sintoma.dataFim)}` : " - ativo"}</span>
+              </div>
+              <div class="actions">
+                ${badge(sintoma.intensidade || "Nao especificada", intensityKind(sintoma.intensidade))}
+                ${sintoma.avaliacaoId ? badge(`CARAT ${sintoma.avaliacaoId}`) : ""}
+              </div>
+            </div>
+            ${sintoma.observacoes ? `<p class="muted">${escapeHtml(sintoma.observacoes)}</p>` : ""}
+          </article>
+        `)
+        .join("")}
+    </div>
+  `;
+}
+
+function renderSintomasPanel(sintomas, utenteId) {
+  const today = new Date().toISOString().slice(0, 10);
+
+  return `
+    <form id="sintoma-form" class="form-grid symptom-form">
+      <input type="hidden" name="utenteId" value="${utenteId}">
+      <div class="form-grid two">
+        <div class="field">
+          <label>Sintoma</label>
+          <input name="nome" placeholder="Ex: Pieira" required>
+        </div>
+        <div class="field">
+          <label>Intensidade</label>
+          <select name="intensidade">
+            <option value="Ligeira">Ligeira</option>
+            <option value="Moderada">Moderada</option>
+            <option value="Intensa">Intensa</option>
+            <option value="Nao especificada">Nao especificada</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid two">
+        <div class="field">
+          <label>Data inicio</label>
+          <input name="dataInicio" type="date" value="${today}" required>
+        </div>
+        <div class="field">
+          <label>Data fim</label>
+          <input name="dataFim" type="date">
+        </div>
+      </div>
+      <div class="field">
+        <label>Observacoes</label>
+        <textarea name="observacoes" placeholder="Ex: Mais intenso durante a noite."></textarea>
+      </div>
+      <button class="button" type="submit">Registar sintoma</button>
+    </form>
+
+    <h3>Historico de sintomas</h3>
+    ${renderSintomasList(sintomas)}
+  `;
+}
+
 function renderAlertas(alertas, medicoMode = false) {
   if (!alertas.length) {
     return `<div class="empty">Sem alertas registados.</div>`;
   }
-
   return `
     <div class="list">
       ${alertas
@@ -455,6 +637,7 @@ function renderUtente() {
   const tendencia = d.resumo.tendencia;
   const tendenciaLabel = tendencia === 0 ? "Sem variacao recente" : tendencia > 0 ? `Subiu ${tendencia} pontos` : `Desceu ${Math.abs(tendencia)} pontos`;
   const activeAlerts = d.alertas.filter((alerta) => alerta.estado !== "FECHADO");
+  const filteredAvaliacoes = filterAvaliacoes(d.avaliacoes);
 
   return `
     <div class="metric-row">
@@ -467,7 +650,10 @@ function renderUtente() {
     <div class="grid two">
       <section class="panel">
         <h2>Evolucao CARAT</h2>
-        ${renderScoreChart(d.avaliacoes, d.configuracao)}
+        ${renderCaratFilters(d.avaliacoes)}
+        <p class="muted">${filteredAvaliacoes.length} de ${d.avaliacoes.length} avaliacoes visiveis.</p>
+        ${renderScoreChart(filteredAvaliacoes, d.configuracao)}
+        ${renderAvaliacoesHistorico(filteredAvaliacoes)}
       </section>
 
       <section class="panel">
@@ -525,6 +711,11 @@ function renderUtente() {
         ${renderSimpleList(d.medicacoes, (item) => `${item.nome} | ${item.dose} | ${item.estado}`)}
         <h3>Exames</h3>
         ${renderSimpleList(d.exames, (item) => `${item.nome} (${item.codigo}) | ${item.estado}`)}
+      </section>
+
+        <section class="panel">
+        <h2>Sintomas reportados</h2>
+        ${renderSintomasPanel(d.sintomas || [], d.perfil.id)}
       </section>
     </div>
 
@@ -636,6 +827,7 @@ function renderMedico() {
                   <div class="actions">
                     ${utente.ultimaAvaliacao ? badge(`${utente.ultimaAvaliacao.scoreTotal}/30`) : badge("Sem score")}
                     ${utente.alertasAtivos ? badge(`${utente.alertasAtivos} alerta`, "high") : badge("Estavel")}
+                    ${utente.sintomasAtivos ? badge(`${utente.sintomasAtivos} sintoma`, "medium") : ""}
                   </div>
                 </div>
               </button>
@@ -653,6 +845,8 @@ function renderMedico() {
               ${renderScoreChart(selected.avaliacoes, selected.configuracao)}
               <h3>Alertas do utente</h3>
               ${renderAlertas(selected.alertas, true)}
+              <h3>Sintomas reportados</h3>
+              ${renderSintomasList(selected.sintomas || [])}
             `
             : `<div class="empty">Escolha um utente para ver o historico clinico.</div>`
         }
@@ -912,6 +1106,54 @@ function bindViewEvents() {
     });
   });
 
+   const caratFilterForm = document.querySelector("#carat-filter-form");
+  if (caratFilterForm) {
+    caratFilterForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      state.caratFilters = {
+        ...state.caratFilters,
+        ...formDataObject(caratFilterForm)
+      };
+      render();
+    });
+  }
+
+  const clearCaratFilters = document.querySelector("#clear-carat-filters");
+  if (clearCaratFilters) {
+    clearCaratFilters.addEventListener("click", () => {
+      state.caratFilters = {
+        dataInicio: "",
+        dataFim: "",
+        interpretacao: "",
+        scoreMin: "",
+        scoreMax: ""
+      };
+      render();
+    });
+  }
+
+  const sintomaForm = document.querySelector("#sintoma-form");
+  if (sintomaForm) {
+    sintomaForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const payload = formDataObject(sintomaForm);
+      payload.utenteId = Number(payload.utenteId);
+      payload.atorId = state.session.user.id;
+      if (!payload.dataFim) {
+        delete payload.dataFim;
+      }
+
+      await api("/api/sintomas", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      sintomaForm.reset();
+      await refreshDashboard();
+      render();
+      showToast("Sintoma registado.");
+    });
+  }
+  
   const caratForm = document.querySelector("#carat-form");
   if (caratForm) {
     updateCaratScorePreview(caratForm);

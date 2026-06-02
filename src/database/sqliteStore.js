@@ -97,6 +97,20 @@ class SqliteStore {
         FOREIGN KEY (medicoId) REFERENCES medicos(id)
       );
 
+      CREATE TABLE IF NOT EXISTS sintomas (
+        id INTEGER PRIMARY KEY,
+        utenteId INTEGER NOT NULL,
+        avaliacaoId INTEGER,
+        nome TEXT NOT NULL,
+        intensidade TEXT NOT NULL,
+        dataInicio TEXT NOT NULL,
+        dataFim TEXT,
+        observacoes TEXT,
+        criadoEm TEXT NOT NULL,
+        FOREIGN KEY (utenteId) REFERENCES utentes(id) ON DELETE CASCADE,
+        FOREIGN KEY (avaliacaoId) REFERENCES caratAvaliacoes(id) ON DELETE SET NULL
+      );
+
       CREATE TABLE IF NOT EXISTS alertas (
         id INTEGER PRIMARY KEY,
         utenteId INTEGER NOT NULL,
@@ -219,6 +233,7 @@ class SqliteStore {
         sintomas: this.parseJson(row.sintomas, []),
         comentarios: row.comentarios || ""
       })),
+      sintomas: this.db.prepare("SELECT * FROM sintomas ORDER BY id").all(),
       alertas: this.db.prepare("SELECT * FROM alertas ORDER BY id").all().map((row) => ({
         ...row,
         configSnapshot: this.parseJson(row.configSnapshot, {}),
@@ -250,6 +265,7 @@ class SqliteStore {
       normalized.administradores.forEach((item) => this.insertAdministrador(item));
       this.insertConfiguracao(normalized.configuracao);
       normalized.caratAvaliacoes.forEach((item) => this.insertCaratAvaliacao(item));
+      normalized.sintomas.forEach((item) => this.insertSintoma(item));
       normalized.alertas.forEach((item) => this.insertAlerta(item));
       normalized.medicacoes.forEach((item) => this.insertMedicacao(item));
       normalized.exames.forEach((item) => this.insertExame(item));
@@ -301,6 +317,7 @@ class SqliteStore {
       "auditoria",
       "exames",
       "medicacoes",
+      "sintomas",
       "alertas",
       "caratAvaliacoes",
       "configuracao",
@@ -379,6 +396,24 @@ class SqliteStore {
         JSON.stringify(item.sintomas || []),
         item.comentarios || "",
         item.data
+      );
+  }
+
+  insertSintoma(item) {
+    this.db
+      .prepare(`INSERT INTO sintomas
+        (id, utenteId, avaliacaoId, nome, intensidade, dataInicio, dataFim, observacoes, criadoEm)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(
+        item.id,
+        item.utenteId,
+        item.avaliacaoId || null,
+        item.nome,
+        item.intensidade || "Nao especificada",
+        item.dataInicio,
+        item.dataFim || null,
+        item.observacoes || "",
+        item.criadoEm
       );
   }
 
@@ -466,6 +501,7 @@ class SqliteStore {
       "medicos",
       "administradores",
       "caratAvaliacoes",
+      "sintomas",
       "alertas",
       "medicacoes",
       "exames",

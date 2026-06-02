@@ -42,6 +42,10 @@ class DashboardService {
       data.exames.filter((exame) => exame.utenteId === utente.id),
       "criadoEm"
     );
+    const sintomas = sortByDateDesc(
+      (data.sintomas || []).filter((sintoma) => sintoma.utenteId === utente.id),
+      "dataInicio"
+    );
 
     return {
       perfil: patientLabel(data, utente),
@@ -65,6 +69,7 @@ class DashboardService {
       alertas,
       medicacoes,
       exames,
+      sintomas,
       configuracao: data.configuracao
     };
   }
@@ -84,10 +89,12 @@ class DashboardService {
       .map((utente) => {
         const avaliacoes = data.caratAvaliacoes.filter((avaliacao) => avaliacao.utenteId === utente.id);
         const alertas = data.alertas.filter((alerta) => alerta.utenteId === utente.id);
+        const sintomasAtivos = (data.sintomas || []).filter((sintoma) => sintoma.utenteId === utente.id && !sintoma.dataFim);
         return {
           ...patientLabel(data, utente),
           ultimaAvaliacao: latest(avaliacoes),
-          alertasAtivos: alertas.filter((alerta) => alerta.estado !== "FECHADO").length
+          alertasAtivos: alertas.filter((alerta) => alerta.estado !== "FECHADO").length,
+          sintomasAtivos: sintomasAtivos.length
         };
       });
 
@@ -120,6 +127,7 @@ class DashboardService {
         utentes: data.utentes.length,
         medicos: data.medicos.length,
         avaliacoes: data.caratAvaliacoes.length,
+        sintomas: (data.sintomas || []).length,
         alertasAtivos: data.alertas.filter((alerta) => alerta.estado !== "FECHADO").length
       },
       configuracao: data.configuracao,
