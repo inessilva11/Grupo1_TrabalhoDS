@@ -701,6 +701,27 @@ th {
   transform: translateY(0);
 }
 
+.form-message {
+  padding: 10px 12px;
+  border: 1px solid #bdd7ee;
+  border-radius: 8px;
+  background: #edf6ff;
+  color: #184c75;
+  font-weight: 700;
+}
+
+.form-message.error {
+  border-color: #f2b8b5;
+  background: #fff1f0;
+  color: #9f1c1c;
+}
+
+.form-message.success {
+  border-color: #b9dec2;
+  background: #f0fbf2;
+  color: #1e6d37;
+}
+
 .empty {
   color: var(--muted);
   padding: 16px;

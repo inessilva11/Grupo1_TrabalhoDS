@@ -1,6 +1,10 @@
 const store = require("../database/sqliteStore");
 const { normalizeEmail, publicUser, ROLES } = require("../models/utilizador.model");
 
+function normalizeText(value) {
+  return String(value || "").trim();
+}
+
 function enrichUtente(data, utente) {
   const user = data.users.find((candidate) => candidate.id === utente.userId);
   const medico = data.medicos.find((candidate) => candidate.id === utente.medicoId);
@@ -56,11 +60,17 @@ class UtenteService {
     return enrichUtente(data, utente);
   }
 
-  criar(payload) {
+   criar(payload) {
     const data = store.read();
     const email = normalizeEmail(payload.email);
-    if (!payload.nome || !email || !payload.medicoId) {
-      const error = new Error("Nome, email e médico responsável sao obrigatórios.");
+    const nome = normalizeText(payload.nome);
+    const dataNascimento = normalizeText(payload.dataNascimento);
+    const profissao = normalizeText(payload.profissao);
+    const telefone = normalizeText(payload.telefone);
+    const morada = normalizeText(payload.morada);
+
+if (!nome || !email || !payload.medicoId || !dataNascimento || !profissao || !telefone || !morada) {
+      const error = new Error("Nome, email, médico responsável, data de nascimento, profissão, telemóvel e morada sao obrigatórios.");
       error.statusCode = 400;
       throw error;
     }
@@ -72,13 +82,13 @@ class UtenteService {
 
     const user = {
       id: store.nextId("users"),
-      nome: String(payload.nome).trim(),
+      nome,
       email,
       password: payload.password || "utente123",
       role: ROLES.UTENTE,
       ativo: true,
-      telefone: payload.telefone || "",
-      morada: payload.morada || ""
+      telefone,
+      morada
     };
 
     const utente = {
@@ -86,11 +96,11 @@ class UtenteService {
       userId: user.id,
       medicoId: Number(payload.medicoId),
       numeroProcesso: payload.numeroProcesso || `UT-2026-${String(store.nextId("utentes")).padStart(3, "0")}`,
-      dataNascimento: payload.dataNascimento || "",
-      profissao: payload.profissao || "",
-      estadoCivil: payload.estadoCivil || "",
+      dataNascimento,
+      profissao,
+      estadoCivil: normalizeText(payload.estadoCivil),
       diagnosticos: Array.isArray(payload.diagnosticos) ? payload.diagnosticos : [],
-      notasClinicas: payload.notasClinicas || ""
+      notasClinicas: normalizeText(payload.notasClinicas)
     };
 
     data.users.push(user);

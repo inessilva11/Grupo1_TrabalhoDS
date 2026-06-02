@@ -181,7 +181,11 @@ class SqliteStore {
     `);
   }
 
-  ensureColumns() {
+   ensureColumns() {
+    this.ensureColumn("users", "telefone", "TEXT");
+    this.ensureColumn("users", "morada", "TEXT");
+    this.ensureColumn("utentes", "dataNascimento", "TEXT");
+    this.ensureColumn("utentes", "profissao", "TEXT");
     this.ensureColumn("caratAvaliacoes", "comentarios", "TEXT NOT NULL DEFAULT ''");
   }
 

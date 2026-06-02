@@ -14,6 +14,9 @@ const state = {
   adminUsers: [],
   medicos: [],
   fhirPayload: null,
+  formMessages: {
+    createUtente: null
+  },
   caratFilters: {
     dataInicio: "",
     dataFim: "",
@@ -54,6 +57,26 @@ function showToast(message) {
   toastEl.textContent = message;
   toastEl.classList.add("show");
   window.setTimeout(() => toastEl.classList.remove("show"), 3200);
+}
+
+function setFormMessage(key, text, kind = "info") {
+  state.formMessages[key] = text ? { text, kind } : null;
+  const slot = document.querySelector(`[data-form-message="${key}"]`);
+  if (slot) {
+    slot.innerHTML = renderFormMessage(key);
+  }
+}
+
+function renderFormMessage(key) {
+  const message = state.formMessages[key];
+  if (!message) {
+    return "";
+  }
+  return `<div class="form-message ${message.kind}" role="status">${escapeHtml(message.text)}</div>`;
+}
+
+function missingRequiredField(payload, fields) {
+  return fields.find((field) => !String(payload[field.name] || "").trim());
 }
 
 async function api(path, options = {}) {
@@ -697,7 +720,7 @@ function renderUtente() {
           <div class="form-grid two">
             <div class="field">
               <label>Profissao</label>
-              <input name="profissão" value="${escapeHtml(d.perfil.profissao)}">
+              <input name="profissao" value="${escapeHtml(d.perfil.profissao)}">
             </div>
             <div class="field">
               <label>Estado civil</label>
@@ -825,12 +848,8 @@ function renderMedico() {
                   </div>
                   <div class="actions">
                     ${utente.ultimaAvaliacao ? badge(`${utente.ultimaAvaliacao.scoreTotal}/30`) : badge("Sem score")}
-<<<<<<< HEAD
                     ${utente.alertasAtivos ? badge(`${utente.alertasAtivos} alerta`, "high") : badge("Estavel")}
                     ${utente.sintomasAtivos ? badge(`${utente.sintomasAtivos} sintoma`, "medium") : ""}
-=======
-                    ${utente.alertasAtivos ? badge(`${utente.alertasAtivos} alerta`, "high") : badge("Estável")}
->>>>>>> a8ab620cc0a2f7219b9abd401404799d1ecedaaf
                   </div>
                 </div>
               </button>
@@ -947,10 +966,10 @@ function renderAdmin() {
       </section>
     </div>
 
-    <div class="grid two">
-      <section class="panel">
+   <section class="panel">
         <h2>Criar utente</h2>
-        <form id="create-utente-form" class="form-grid">
+        <form id="create-utente-form" class="form-grid" novalidate>
+          <div data-form-message="createUtente">${renderFormMessage("createUtente")}</div>
           <div class="form-grid two">
             <div class="field">
               <label>Nome</label>
@@ -967,6 +986,24 @@ function renderAdmin() {
               <select name="medicoId" required>
                 ${state.medicos.map((medico) => `<option value="${medico.id}">${escapeHtml(medico.user.nome)} | ${escapeHtml(medico.especialidade)}</option>`).join("")}
               </select>
+            </div>
+            <div class="field">
+              <label>Data de nascimento</label>
+              <input name="dataNascimento" type="date" required>
+            </div>
+          </div>
+          <label>Número de telemóvel</label>
+              <input name="telefone" type="tel" placeholder="912345678" required>
+            </div>
+            <div class="field">
+              <label>Morada</label>
+              <input name="morada" required>
+            </div>
+          </div>
+          <div class="form-grid two">
+            <div class="field">
+              <label>Profissão</label>
+              <input name="profissao" required>
             </div>
             <div class="field">
               <label>Diagnósticos separados por vírgula</label>
@@ -1297,24 +1334,47 @@ function bindViewEvents() {
     });
   }
 
-  const createUtenteForm = document.querySelector("#create-utente-form");
+   const createUtenteForm = document.querySelector("#create-utente-form");
   if (createUtenteForm) {
     createUtenteForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const payload = formDataObject(createUtenteForm);
+      const missing = missingRequiredField(payload, [
+        { name: "nome", label: "Nome" },
+        { name: "email", label: "Email" },
+        { name: "medicoId", label: "Medico responsavel" },
+        { name: "dataNascimento", label: "Data de nascimento" },
+        { name: "telefone", label: "Numero de telemovel" },
+        { name: "morada", label: "Morada" },
+        { name: "profissao", label: "Profissao" }
+      ]);
+
+      if (missing) {
+        setFormMessage("createUtente", `${missing.label} e obrigatorio.`, "error");
+        return;
+      }
+
       payload.diagnosticos = payload.diagnosticos
         .split(",")
         .map((item) => item.trim())
         .filter(Boolean);
       payload.atorId = state.session.user.id;
-      await api("/api/utentes", {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      createUtenteForm.reset();
-      await refreshDashboard();
-      render();
-      showToast("Utente criado.");
+      setFormMessage("createUtente", "A criar utente...", "info");
+
+      try {
+        await api("/api/utentes", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        createUtenteForm.reset();
+        await refreshDashboard();
+        render();
+        setFormMessage("createUtente", `Utente criado: ${payload.email}`, "success");
+        showToast("Utente criado.");
+      } catch (error) {
+        setFormMessage("createUtente", error.message, "error");
+        showToast(error.message);
+      }
     });
   }
 
