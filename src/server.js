@@ -14,7 +14,14 @@ const fhirRoutes = require("./routes/fhir.routes");
 
 const app = express();
 const apiRouter = express.Router();
-const publicDir = path.join(__dirname, "..", "public");
+
+app.use(express.json({ limit: "1mb" }));
+const publicDir = path.join(__dirname, "..", "/public");
+app.use(express.static(publicDir));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(publicDir, "index.html"));
+});
 
 app.use((req, res, next) => {
   res.set({
@@ -31,8 +38,6 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json({ limit: "1mb" }));
-app.use(express.static(publicDir));
 
 [
   authRoutes,
@@ -50,7 +55,7 @@ apiRouter.get("/api/health", (req, res) => {
   sendJson(res, 200, {
     status: "ok",
     app: "SauDInoB",
-    arquitetura: "Express + MVC + Service + JSON"
+    arquitetura: "Express + MVC + Service + SQLite"
   });
 });
 
