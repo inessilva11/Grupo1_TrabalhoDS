@@ -80,7 +80,7 @@ function updateShell() {
   const titles = {
     login: "Iniciar sessao",
     utente: "Dashboard do Utente",
-    medico: "Painel Clinico do Médico",
+    medico: "Painel Clinico do Medico",
     administrador: "Consola do Administrador"
   };
   titleEl.textContent = state.session ? titles[state.role] : titles.login;
@@ -224,7 +224,7 @@ function stateKind(alertState) {
 function renderScoreChart(avaliacoes, config) {
   const items = [...avaliacoes].sort((a, b) => new Date(a.data) - new Date(b.data)).slice(-8);
   if (items.length === 0) {
-    return `<div class="empty">Ainda não há avaliações CARAT para desenhar a evolução.</div>`;
+    return `<div class="empty">Ainda nao ha avaliacoes CARAT para desenhar a evolucao.</div>`;
   }
 
   const width = 720;
@@ -303,52 +303,150 @@ function renderAlertas(alertas, medicoMode = false) {
   `;
 }
 
-function renderQuestionarioForm() {
-  const { perguntas, opcoes } = state.questionario;
+function caratQuestionOptions(question) {
+  if (Array.isArray(question.options) && question.options.length) {
+    return question.options;
+  }
+  if (question.section === "medicacao" && Array.isArray(state.questionario.opcoesMedicacao)) {
+    return state.questionario.opcoesMedicacao;
+  }
+  return state.questionario.opcoes || [];
+}
+
+function renderCaratSection(intro, questions) {
+  if (!questions.length) {
+    return "";
+  }
+
+  const headerOptions = caratQuestionOptions(questions[0]);
   return `
-    <form id="carat-form" class="form-grid">
-      <div class="question-list">
-        ${perguntas
-          .map((question) => `
-            <fieldset class="question">
-              <div class="question-header">
-                <legend class="question-title">${question.id}. ${escapeHtml(question.text)}</legend>
-                <small>${escapeHtml(question.area)}</small>
-              </div>
-              <div class="radio-grid">
-                ${opcoes
-                  .map((option) => `
-                    <label class="radio-card">
-                      <input type="radio" name="q${question.id}" value="${option.value}" ${option.value === 2 ? "checked" : ""} required>
-                      <span>${escapeHtml(option.label)}</span>
-                    </label>
-                  `)
-                  .join("")}
-              </div>
-              <small>${escapeHtml(question.helper)}</small>
-            </fieldset>
-          `)
-          .join("")}
+    <section class="carat-section">
+      <p class="carat-prompt">${escapeHtml(intro)}</p>
+      <div class="carat-table-wrap">
+        <table class="carat-table">
+          <thead>
+            <tr>
+              <th>Pergunta</th>
+              ${headerOptions
+                .map((option) => `
+                  <th>
+                    <span>${escapeHtml(option.label)}</span>
+                    <strong>${option.value}</strong>
+                  </th>
+                `)
+                .join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${questions
+              .map((question) => {
+                const options = caratQuestionOptions(question);
+                return `
+                  <tr>
+                    <th class="carat-question-cell" scope="row">
+                      ${question.id}. ${escapeHtml(question.text)} <span aria-hidden="true">*</span>
+                    </th>
+                    ${options
+                      .map((option) => `
+                        <td>
+                          <label class="carat-option">
+                            <input
+                              type="radio"
+                              name="q${question.id}"
+                              value="${option.value}"
+                              required
+                              aria-label="${question.id}. ${escapeHtml(question.text)} ${escapeHtml(option.label)} ${option.value} pontos"
+                            >
+                            <span>${option.value}</span>
+                          </label>
+                        </td>
+                      `)
+                      .join("")}
+                  </tr>
+                `;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function renderQuestionarioForm() {
+  const { perguntas } = state.questionario;
+  const symptomQuestions = perguntas.filter((question) => question.section !== "medicacao");
+  const medicationQuestions = perguntas.filter((question) => question.section === "medicacao");
+
+  return `
+    <form id="carat-form" class="form-grid carat-form">
+      ${renderCaratSection(
+        "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia, em media, quantas vezes teve:",
+        symptomQuestions
+      )}
+      ${renderCaratSection(
+        "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia, quantas vezes teve que:",
+        medicationQuestions
+      )}
+
+      <div class="carat-required">
+        <span>* Todas as questoes sao de resposta obrigatoria</span>
+        <span id="carat-answered-count">0/10 respostas</span>
+      </div>
+
+      <div class="carat-score-board" aria-live="polite">
+        <div class="carat-score">
+          <span>Pontuacao Total</span>
+          <strong id="carat-score-total">0</strong>
+          <small id="carat-score-total-note">Pontuacoes superiores a 24 indicam bom controlo da doenca.</small>
+        </div>
+        <div class="carat-score">
+          <span>Pontuacao vias aereas superiores (item 1-4)</span>
+          <strong id="carat-score-upper">0</strong>
+          <small id="carat-score-upper-note">Controlado se pontuacao for &gt;8.</small>
+        </div>
+        <div class="carat-score">
+          <span>Pontuacao vias aereas inferiores (item 5-10)</span>
+          <strong id="carat-score-lower">0</strong>
+          <small id="carat-score-lower-note">Controlado se pontuacao for &gt;=16.</small>
+        </div>
       </div>
 
       <div class="field">
-        <label>Sintomas sentidos agora</label>
-        <div class="chip-row">
-          ${["falta de ar", "pieira", "tosse", "espirros", "aperto no peito", "sono afetado"]
-            .map((symptom) => `
-              <label class="chip">
-                <input type="checkbox" name="sintomas" value="${escapeHtml(symptom)}">
-                ${escapeHtml(symptom)}
-              </label>
-            `)
-            .join("")}
-        </div>
+        <label>Comentarios</label>
+        <textarea name="comentarios" placeholder="Registe informacao adicional para a equipa clinica."></textarea>
       </div>
+
       <div class="actions">
         <button class="button" type="submit">Submeter avaliacao CARAT</button>
+        <button class="button secondary" type="reset">Limpar</button>
       </div>
     </form>
   `;
+}
+
+function updateCaratScorePreview(form) {
+  const formData = new FormData(form);
+  const values = state.questionario.perguntas.map((question) => {
+    const raw = formData.get(`q${question.id}`);
+    return raw === null ? null : Number(raw);
+  });
+  const sum = (items) => items.reduce((total, value) => total + (Number.isInteger(value) ? value : 0), 0);
+  const upper = sum(values.slice(0, 4));
+  const lower = sum(values.slice(4));
+  const total = upper + lower;
+  const answered = values.filter((value) => Number.isInteger(value)).length;
+
+  form.querySelector("#carat-score-total").textContent = total;
+  form.querySelector("#carat-score-upper").textContent = upper;
+  form.querySelector("#carat-score-lower").textContent = lower;
+  form.querySelector("#carat-answered-count").textContent = `${answered}/10 respostas`;
+  form.querySelector("#carat-score-total-note").textContent =
+    total > 24 ? "Bom controlo da doenca." : "Pontuacoes superiores a 24 indicam bom controlo da doenca.";
+  form.querySelector("#carat-score-upper-note").textContent =
+    upper > 8 ? "Vias aereas superiores controladas." : "Controlado se pontuacao for >8.";
+  form.querySelector("#carat-score-lower-note").textContent =
+    lower >= 16 ? "Vias aereas inferiores controladas." : "Controlado se pontuacao for >=16.";
 }
 
 function renderUtente() {
@@ -360,20 +458,20 @@ function renderUtente() {
 
   return `
     <div class="metric-row">
-      ${metric("Score atual", latest?.scoreTotal ?? "-", latest?.interpretacao || "Sem avaliação")}
+      ${metric("Score atual", latest?.scoreTotal ?? "-", latest?.interpretacao || "Sem avaliacao")}
       ${metric("Alertas ativos", d.resumo.alertasAtivos)}
-      ${metric("Score médio", d.resumo.scoreMedio ?? "-")}
-      ${metric("Tendência", tendenciaLabel)}
+      ${metric("Score medio", d.resumo.scoreMedio ?? "-")}
+      ${metric("Tendencia", tendenciaLabel)}
     </div>
 
     <div class="grid two">
       <section class="panel">
-        <h2>Evolução CARAT</h2>
+        <h2>Evolucao CARAT</h2>
         ${renderScoreChart(d.avaliacoes, d.configuracao)}
       </section>
 
       <section class="panel">
-        <h2>Alertas e próximos passos</h2>
+        <h2>Alertas e proximos passos</h2>
         ${latest ? `<p><strong>${escapeHtml(latest.interpretacao)}</strong></p>` : ""}
         <div class="chip-row">
           ${(latest?.recomendacoes || []).map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join("")}
@@ -383,14 +481,14 @@ function renderUtente() {
       </section>
     </div>
 
+    <section class="panel carat-panel">
+      <h2>Teste de Controlo da Asma e Rinite Alergica</h2>
+      ${renderQuestionarioForm()}
+    </section>
+
     <div class="grid two">
       <section class="panel">
-        <h2>Responder ao questionário CARAT</h2>
-        ${renderQuestionarioForm()}
-      </section>
-
-      <section class="panel">
-        <h2>Perfil e plano clínico</h2>
+        <h2>Perfil e plano clinico</h2>
         <form id="profile-form" class="form-grid">
           <div class="field">
             <label>Nome</label>
@@ -412,8 +510,8 @@ function renderUtente() {
           </div>
           <div class="form-grid two">
             <div class="field">
-              <label>Profissão</label>
-              <input name="profissão" value="${escapeHtml(d.perfil.profissao)}">
+              <label>Profissao</label>
+              <input name="profissao" value="${escapeHtml(d.perfil.profissao)}">
             </div>
             <div class="field">
               <label>Estado civil</label>
@@ -423,12 +521,16 @@ function renderUtente() {
           <button class="button" type="submit">Atualizar perfil</button>
         </form>
 
-        <h3>Medicação</h3>
+        <h3>Medicacao</h3>
         ${renderSimpleList(d.medicacoes, (item) => `${item.nome} | ${item.dose} | ${item.estado}`)}
         <h3>Exames</h3>
         ${renderSimpleList(d.exames, (item) => `${item.nome} (${item.codigo}) | ${item.estado}`)}
       </section>
     </div>
+
+    ${renderFhirPanel("Interoperabilidade FHIR do utente", [
+      { label: "Observations CARAT", url: `/api/fhir/observations?patient=utente-${d.perfil.id}` }
+    ])}
   `;
 }
 
@@ -448,6 +550,7 @@ function renderLogin() {
     <section class="login-grid">
       <div class="login-copy">
         <h2>Entrar no SauDInoB</h2>
+        <p>A autenticacao agora usa sessao com token no backend. Entre com uma conta ou use um atalho de demonstracao.</p>
         <div class="demo-accounts">
           ${Object.entries(demoAccounts)
             .map(([role, account]) => `
@@ -466,7 +569,7 @@ function renderLogin() {
       </div>
 
       <form id="login-form" class="panel auth-form">
-        <h2>Iniciar sessão</h2>
+        <h2>Iniciar sessao</h2>
         <div class="field">
           <label>Email</label>
           <input name="email" type="email" autocomplete="username" value="utente@saudinob.pt" required>
@@ -477,6 +580,30 @@ function renderLogin() {
         </div>
         <button class="button" type="submit">Entrar</button>
       </form>
+    </section>
+  `;
+}
+
+function renderFhirPanel(title, endpoints) {
+  const payload = state.fhirPayload
+    ? JSON.stringify(state.fhirPayload, null, 2)
+    : "Escolha uma consulta FHIR para ver o JSON devolvido.";
+
+  return `
+    <section class="panel">
+      <div class="item-head">
+        <div>
+          <h2>${escapeHtml(title)}</h2>
+          <p class="muted">Interoperabilidade FHIR simplificada, alinhada com a referencia: apenas GET de Observations CARAT.</p>
+        </div>
+        ${badge("FHIR R4")}
+      </div>
+      <div class="actions">
+        ${endpoints
+          .map((endpoint) => `<button class="button secondary" type="button" data-fhir-url="${endpoint.url}">${escapeHtml(endpoint.label)}</button>`)
+          .join("")}
+      </div>
+      <pre class="json-view">${escapeHtml(payload)}</pre>
     </section>
   `;
 }
@@ -508,7 +635,7 @@ function renderMedico() {
                   </div>
                   <div class="actions">
                     ${utente.ultimaAvaliacao ? badge(`${utente.ultimaAvaliacao.scoreTotal}/30`) : badge("Sem score")}
-                    ${utente.alertasAtivos ? badge(`${utente.alertasAtivos} alerta`, "high") : badge("Estável")}
+                    ${utente.alertasAtivos ? badge(`${utente.alertasAtivos} alerta`, "high") : badge("Estavel")}
                   </div>
                 </div>
               </button>
@@ -527,7 +654,7 @@ function renderMedico() {
               <h3>Alertas do utente</h3>
               ${renderAlertas(selected.alertas, true)}
             `
-            : `<div class="empty">Escolha um utente para ver o histórico clínico.</div>`
+            : `<div class="empty">Escolha um utente para ver o historico clinico.</div>`
         }
       </section>
     </div>
@@ -537,20 +664,20 @@ function renderMedico() {
         ? `
           <div class="grid two">
             <section class="panel">
-              <h2>Registo clínico</h2>
+              <h2>Registo clinico</h2>
               <form id="medicacao-form" class="form-grid">
-                <h3>Nova medicação</h3>
+                <h3>Nova medicacao</h3>
                 <div class="form-grid two">
                   <div class="field">
-                    <label>Medicação</label>
+                    <label>Medicacao</label>
                     <input name="nome" placeholder="Ex: Corticosteroide inalado" required>
                   </div>
                   <div class="field">
                     <label>Dose</label>
-                    <input name="dose" placeholder="Ex: 1 inalação 12/12h">
+                    <input name="dose" placeholder="Ex: 1 inalacao 12/12h">
                   </div>
                 </div>
-                <button class="button" type="submit">Registar medicação</button>
+                <button class="button" type="submit">Registar medicacao</button>
               </form>
 
               <form id="exame-form" class="form-grid">
@@ -561,7 +688,7 @@ function renderMedico() {
                     <input name="nome" placeholder="Ex: Espirometria" required>
                   </div>
                   <div class="field">
-                    <label>Código com 4 caracteres</label>
+                    <label>Codigo com 4 caracteres</label>
                     <input name="codigo" maxlength="4" placeholder="ESP2" required>
                   </div>
                 </div>
@@ -570,13 +697,16 @@ function renderMedico() {
             </section>
 
             <section class="panel">
-              <h2>Histórico clínico</h2>
-              <h3>Medicação</h3>
+              <h2>Historico clinico</h2>
+              <h3>Medicacao</h3>
               ${renderSimpleList(selected.medicacoes, (item) => `${item.nome} | ${item.dose} | ${item.estado}`)}
               <h3>Exames</h3>
               ${renderSimpleList(selected.exames, (item) => `${item.nome} (${item.codigo}) | ${item.estado}`)}
             </section>
           </div>
+          ${renderFhirPanel("Exportacao FHIR do utente selecionado", [
+            { label: "Observations CARAT", url: `/api/fhir/observations?patient=utente-${selected.perfil.id}` }
+          ])}
         `
         : ""
     }
@@ -589,13 +719,13 @@ function renderAdmin() {
     <div class="metric-row">
       ${metric("Utilizadores", d.resumo.utilizadores)}
       ${metric("Utentes", d.resumo.utentes)}
-      ${metric("Médicos", d.resumo.medicos)}
+      ${metric("Medicos", d.resumo.medicos)}
       ${metric("Alertas ativos", d.resumo.alertasAtivos)}
     </div>
 
     <div class="grid two">
       <section class="panel">
-        <h2>Configuração de limiares</h2>
+        <h2>Configuracao de limiares</h2>
         <form id="config-form" class="form-grid">
           <div class="form-grid two">
             <div class="field">
@@ -603,12 +733,12 @@ function renderAdmin() {
               <input name="limiarControloInsuficiente" type="number" min="0" max="30" value="${d.configuracao.limiarControloInsuficiente}" required>
             </div>
             <div class="field">
-              <label>Variação de deterioração</label>
+              <label>Variacao de deterioracao</label>
               <input name="variacaoDeterioracao" type="number" min="1" max="30" value="${d.configuracao.variacaoDeterioracao}" required>
             </div>
           </div>
           <div class="actions">
-            <button class="button" type="submit">Guardar configuração</button>
+            <button class="button" type="submit">Guardar configuracao</button>
             <button class="button secondary" type="button" id="seed-button">Repor dados simulados</button>
           </div>
         </form>
@@ -636,14 +766,14 @@ function renderAdmin() {
           </div>
           <div class="form-grid two">
             <div class="field">
-              <label>Médico responsável</label>
+              <label>Medico responsavel</label>
               <select name="medicoId" required>
                 ${state.medicos.map((medico) => `<option value="${medico.id}">${escapeHtml(medico.user.nome)} | ${escapeHtml(medico.especialidade)}</option>`).join("")}
               </select>
             </div>
             <div class="field">
-              <label>Diagnósticos separados por vírgula</label>
-              <input name="diagnósticos" placeholder="Asma, Rinite">
+              <label>Diagnosticos separados por virgula</label>
+              <input name="diagnosticos" placeholder="Asma, Rinite">
             </div>
           </div>
           <button class="button" type="submit">Criar utente</button>
@@ -651,7 +781,7 @@ function renderAdmin() {
       </section>
 
       <section class="panel">
-        <h2>Criar médico</h2>
+        <h2>Criar medico</h2>
         <form id="create-medico-form" class="form-grid">
           <div class="form-grid two">
             <div class="field">
@@ -669,15 +799,18 @@ function renderAdmin() {
               <input name="especialidade" required>
             </div>
             <div class="field">
-              <label>Cédula</label>
-              <input name="cédula">
+              <label>Cedula</label>
+              <input name="cedula">
             </div>
           </div>
-          <button class="button" type="submit">Criar médico</button>
+          <button class="button" type="submit">Criar medico</button>
         </form>
       </section>
     </div>
 
+    ${renderFhirPanel("Servidor FHIR SauDInoB", [
+      { label: "Todas as Observations", url: "/api/fhir/observations" }
+    ])}
 
     <section class="panel">
       <h2>Utilizadores</h2>
@@ -724,7 +857,7 @@ function render() {
 
   if (state.role === "utente") {
     app.innerHTML = renderUtente();
-  } else if (state.role === "médico") {
+  } else if (state.role === "medico") {
     app.innerHTML = renderMedico();
   } else {
     app.innerHTML = renderAdmin();
@@ -749,7 +882,7 @@ function bindViewEvents() {
       const payload = formDataObject(loginForm);
       try {
         await loginWithCredentials(payload.email, payload.password);
-        showToast("Sessão iniciada.");
+        showToast("Sessao iniciada.");
       } catch (error) {
         showToast(error.message);
       }
@@ -781,19 +914,26 @@ function bindViewEvents() {
 
   const caratForm = document.querySelector("#carat-form");
   if (caratForm) {
+    updateCaratScorePreview(caratForm);
+    caratForm.addEventListener("change", () => updateCaratScorePreview(caratForm));
+    caratForm.addEventListener("reset", () => {
+      window.setTimeout(() => updateCaratScorePreview(caratForm), 0);
+    });
     caratForm.addEventListener("submit", async (event) => {
       event.preventDefault();
+      const formData = new FormData(caratForm);
       const respostas = state.questionario.perguntas.map((question) => {
-        return Number(new FormData(caratForm).get(`q${question.id}`));
+        return Number(formData.get(`q${question.id}`));
       });
-      const sintomas = [...caratForm.querySelectorAll("input[name='sintomas']:checked")].map((input) => input.value);
+      const comentarios = String(formData.get("comentarios") || "").trim();
       await api("/api/carat/avaliacoes", {
         method: "POST",
         body: JSON.stringify({
           utenteId: state.session.profile.id,
           atorId: state.session.user.id,
           respostas,
-          sintomas
+          sintomas: [],
+          comentarios
         })
       });
       await refreshDashboard();
@@ -835,7 +975,7 @@ function bindViewEvents() {
         body: JSON.stringify({
           estado,
           autorId: state.session.user.id,
-          nota: estado === "FECHADO" ? "Alerta fechado pelo médico." : `Estado alterado para ${estado}.`
+          nota: estado === "FECHADO" ? "Alerta fechado pelo medico." : `Estado alterado para ${estado}.`
         })
       });
       await refreshDashboard();
@@ -860,7 +1000,7 @@ function bindViewEvents() {
       medicacaoForm.reset();
       await refreshDashboard();
       render();
-      showToast("Medicação registada.");
+      showToast("Medicacao registada.");
     });
   }
 
@@ -897,7 +1037,7 @@ function bindViewEvents() {
       });
       await refreshDashboard();
       render();
-      showToast("Configuração atualizada.");
+      showToast("Configuracao atualizada.");
     });
   }
 
@@ -947,7 +1087,7 @@ function bindViewEvents() {
       createMedicoForm.reset();
       await refreshDashboard();
       render();
-      showToast("Médico criado.");
+      showToast("Medico criado.");
     });
   }
 }

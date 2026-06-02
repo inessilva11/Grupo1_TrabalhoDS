@@ -390,6 +390,139 @@ h3 {
   accent-color: var(--teal);
 }
 
+.carat-panel {
+  overflow: hidden;
+}
+
+.carat-form {
+  gap: 16px;
+}
+
+.carat-section {
+  display: grid;
+  gap: 8px;
+}
+
+.carat-prompt {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.carat-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.carat-table {
+  min-width: 880px;
+  border-collapse: collapse;
+}
+
+.carat-table th,
+.carat-table td {
+  padding: 9px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.carat-table thead th {
+  background: #edf4f2;
+  color: var(--ink);
+  font-size: 12px;
+  text-transform: none;
+}
+
+.carat-table thead th:first-child {
+  text-align: left;
+  width: 34%;
+}
+
+.carat-table thead span,
+.carat-table thead strong {
+  display: block;
+}
+
+.carat-table thead strong {
+  margin-top: 4px;
+  color: var(--teal-dark);
+  font-size: 16px;
+}
+
+.carat-question-cell {
+  text-align: left !important;
+  font-size: 13px;
+  line-height: 1.35;
+  background: #fbfcf9;
+}
+
+.carat-question-cell span {
+  color: var(--danger);
+}
+
+.carat-option {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.carat-option input {
+  accent-color: var(--teal);
+}
+
+.carat-option span {
+  min-width: 22px;
+  font-weight: 800;
+  color: var(--teal-dark);
+}
+
+.carat-required {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.carat-required span:first-child {
+  color: var(--danger);
+}
+
+.carat-score-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.carat-score {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcf9;
+  min-height: 108px;
+}
+
+.carat-score span,
+.carat-score small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.carat-score strong {
+  display: block;
+  margin: 6px 0;
+  color: var(--teal-dark);
+  font-size: 28px;
+}
+
 .chip-row {
   display: flex;
   gap: 8px;
@@ -609,6 +742,7 @@ th {
   .grid.three,
   .metric-row,
   .form-grid.two,
+  .carat-score-board,
   .login-grid {
     grid-template-columns: 1fr;
   }

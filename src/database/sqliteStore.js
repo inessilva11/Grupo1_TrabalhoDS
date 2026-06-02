@@ -19,6 +19,7 @@ class SqliteStore {
       this.db = new DatabaseSync(this.filePath);
       this.db.exec("PRAGMA foreign_keys = ON");
       this.ensureSchema();
+      this.ensureColumns();
       this.seedIfEmpty();
     }
   }
@@ -90,6 +91,7 @@ class SqliteStore {
         interpretacao TEXT NOT NULL,
         recomendacoes TEXT NOT NULL,
         sintomas TEXT NOT NULL DEFAULT '[]',
+        comentarios TEXT NOT NULL DEFAULT '',
         data TEXT NOT NULL,
         FOREIGN KEY (utenteId) REFERENCES utentes(id) ON DELETE CASCADE,
         FOREIGN KEY (medicoId) REFERENCES medicos(id)
@@ -165,6 +167,17 @@ class SqliteStore {
     `);
   }
 
+  ensureColumns() {
+    this.ensureColumn("caratAvaliacoes", "comentarios", "TEXT NOT NULL DEFAULT ''");
+  }
+
+  ensureColumn(table, column, definition) {
+    const columns = this.db.prepare(`PRAGMA table_info(${table})`).all();
+    if (!columns.some((item) => item.name === column)) {
+      this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
+  }
+
   seedIfEmpty() {
     const row = this.db.prepare("SELECT COUNT(*) AS total FROM users").get();
     if (row.total === 0) {
@@ -203,7 +216,8 @@ class SqliteStore {
         ...row,
         respostas: this.parseJson(row.respostas, []),
         recomendacoes: this.parseJson(row.recomendacoes, []),
-        sintomas: this.parseJson(row.sintomas, [])
+        sintomas: this.parseJson(row.sintomas, []),
+        comentarios: row.comentarios || ""
       })),
       alertas: this.db.prepare("SELECT * FROM alertas ORDER BY id").all().map((row) => ({
         ...row,
@@ -350,8 +364,8 @@ class SqliteStore {
   insertCaratAvaliacao(item) {
     this.db
       .prepare(`INSERT INTO caratAvaliacoes
-        (id, utenteId, medicoId, respostas, scoreTotal, scoreSuperior, scoreInferior, interpretacao, recomendacoes, sintomas, data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        (id, utenteId, medicoId, respostas, scoreTotal, scoreSuperior, scoreInferior, interpretacao, recomendacoes, sintomas, comentarios, data)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(
         item.id,
         item.utenteId,
@@ -363,6 +377,7 @@ class SqliteStore {
         item.interpretacao,
         JSON.stringify(item.recomendacoes || []),
         JSON.stringify(item.sintomas || []),
+        item.comentarios || "",
         item.data
       );
   }

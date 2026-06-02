@@ -1,13 +1,14 @@
 const store = require("../database/sqliteStore");
 const alertaService = require("./alerta.service");
-const { CARAT_QUESTIONS, ANSWER_OPTIONS, calculateScores } = require("../models/carat.model");
+const { CARAT_QUESTIONS, ANSWER_OPTIONS, MEDICATION_ANSWER_OPTIONS, calculateScores } = require("../models/carat.model");
 
 class CaratService {
   obterQuestionario() {
     return {
       perguntas: CARAT_QUESTIONS,
       opcoes: ANSWER_OPTIONS,
-      escala: "0 representa sintomas frequentes; 3 representa ausencia ou quase ausencia de sintomas."
+      opcoesMedicacao: MEDICATION_ANSWER_OPTIONS,
+      escala: "3 representa melhor controlo; 0 representa maior frequencia ou agravamento."
     };
   }
 
@@ -46,6 +47,7 @@ class CaratService {
       interpretacao: calculo.interpretacao,
       recomendacoes: calculo.recomendacoes,
       sintomas: Array.isArray(payload.sintomas) ? payload.sintomas.filter(Boolean) : [],
+      comentarios: String(payload.comentarios || "").trim(),
       data: new Date().toISOString()
     };
 

@@ -1,75 +1,104 @@
+const SYMPTOM_ANSWER_OPTIONS = [
+  { value: 3, label: "Nunca" },
+  { value: 2, label: "Ate 1 ou 2 dias" },
+  { value: 1, label: "Mais de 2 dias por semana" },
+  { value: 0, label: "Quase todos ou todos os dias" }
+];
+
+const MEDICATION_ANSWER_OPTIONS = [
+  { value: 3, label: "Nao estou a tomar medicamentos" },
+  { value: 2, label: "Nunca" },
+  { value: 1, label: "Menos de 7 dias" },
+  { value: 0, label: "7 ou mais dias" }
+];
+
 const CARAT_QUESTIONS = [
   {
     id: 1,
     area: "Vias aereas superiores",
-    text: "Nariz entupido, comichao ou pingo no nariz",
-    helper: "Sintomas de rinite nos ultimos dias."
+    section: "sintomas",
+    text: "Nariz entupido?",
+    helper: "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia.",
+    options: SYMPTOM_ANSWER_OPTIONS
   },
   {
     id: 2,
     area: "Vias aereas superiores",
-    text: "Espirros ou corrimento nasal",
-    helper: "Frequencia de sintomas nasais."
+    section: "sintomas",
+    text: "Espirros?",
+    helper: "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia.",
+    options: SYMPTOM_ANSWER_OPTIONS
   },
   {
     id: 3,
     area: "Vias aereas superiores",
-    text: "Olhos irritados ou lacrimejantes",
-    helper: "Sinais associados a alergia respiratoria."
+    section: "sintomas",
+    text: "Comichao no nariz?",
+    helper: "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia.",
+    options: SYMPTOM_ANSWER_OPTIONS
   },
   {
     id: 4,
     area: "Vias aereas superiores",
-    text: "Sono afetado por sintomas nasais",
-    helper: "Impacto da rinite na qualidade de sono."
+    section: "sintomas",
+    text: "Corrimento/pingo do nariz?",
+    helper: "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia.",
+    options: SYMPTOM_ANSWER_OPTIONS
   },
   {
     id: 5,
     area: "Vias aereas inferiores",
-    text: "Falta de ar",
-    helper: "Dificuldade respiratoria nas atividades habituais."
+    section: "sintomas",
+    text: "Falta de ar/dispneia?",
+    helper: "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia.",
+    options: SYMPTOM_ANSWER_OPTIONS
   },
   {
     id: 6,
     area: "Vias aereas inferiores",
-    text: "Pieira ou ruido no peito",
-    helper: "Sintomas de obstrucao das vias aereas."
+    section: "sintomas",
+    text: "Chiadeira no peito/pieira?",
+    helper: "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia.",
+    options: SYMPTOM_ANSWER_OPTIONS
   },
   {
     id: 7,
     area: "Vias aereas inferiores",
-    text: "Aperto ou peso no peito",
-    helper: "Sensacao toracica associada a agravamento."
+    section: "sintomas",
+    text: "Aperto no peito com esforco fisico?",
+    helper: "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia.",
+    options: SYMPTOM_ANSWER_OPTIONS
   },
   {
     id: 8,
     area: "Vias aereas inferiores",
-    text: "Limitacao nas atividades diarias",
-    helper: "Impacto funcional dos sintomas respiratorios."
+    section: "sintomas",
+    text: "Cansaco/dificuldade em fazer as suas actividades ou tarefas do dia-a-dia?",
+    helper: "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia.",
+    options: SYMPTOM_ANSWER_OPTIONS
   },
   {
     id: 9,
     area: "Vias aereas inferiores",
-    text: "Necessidade de medicacao de alivio",
-    helper: "Uso de medicacao SOS ou adicional."
+    section: "sintomas",
+    text: "Acordou durante a noite por causa da sua asma/rinite/alergia?",
+    helper: "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia.",
+    options: SYMPTOM_ANSWER_OPTIONS
   },
   {
     id: 10,
     area: "Vias aereas inferiores",
-    text: "Percecao global de controlo respiratorio",
-    helper: "Como sente o controlo da sua doenca."
+    section: "medicacao",
+    text: "Aumentar a utilizacao dos seus medicamentos?",
+    helper: "Nas ultimas 4 semanas, por causa da sua asma/rinite/alergia.",
+    options: MEDICATION_ANSWER_OPTIONS
   }
 ];
 
-const ANSWER_OPTIONS = [
-  { value: 0, label: "Todos os dias" },
-  { value: 1, label: "Varios dias" },
-  { value: 2, label: "Poucos dias" },
-  { value: 3, label: "Nunca ou quase nunca" }
-];
+const ANSWER_OPTIONS = SYMPTOM_ANSWER_OPTIONS;
 
 function interpretScore(scoreTotal) {
-  if (scoreTotal >= 24) {
+  if (scoreTotal > 24) {
     return "Controlado";
   }
   if (scoreTotal >= 16) {
@@ -79,7 +108,7 @@ function interpretScore(scoreTotal) {
 }
 
 function recommendationsFor(scoreTotal) {
-  if (scoreTotal >= 24) {
+  if (scoreTotal > 24) {
     return [
       "Manter o plano de autocuidado atual.",
       "Continuar a registar sintomas e repetir a avaliacao no intervalo definido."
@@ -138,6 +167,7 @@ function calculateScores(respostas) {
 module.exports = {
   CARAT_QUESTIONS,
   ANSWER_OPTIONS,
+  MEDICATION_ANSWER_OPTIONS,
   calculateScores,
   interpretScore,
   recommendationsFor
