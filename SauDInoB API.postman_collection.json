@@ -1,0 +1,2473 @@
+{
+  "info": {
+    "_postman_id": "389210dd-a4b6-4932-bab8-2d6d8840c56a",
+    "name": "SauDInoB API",
+    "description": "Coleção de testes Postman para validar a API SauDInoB: autenticação, perfis, CARAT, sintomas, alertas, dashboards, medicações, exames, administração e FHIR. Antes de correr: iniciar o servidor com npm start. A coleção começa por fazer login como administrador, repor a base de dados com /api/admin/seed e voltar a autenticar os três perfis.\n\nEsta versão é autónoma: não precisa de environment separado. As variáveis necessárias estão definidas ao nível da coleção, incluindo baseUrl e tokens guardados automaticamente pelos pedidos de login.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "43008371"
+  },
+  "item": [
+    {
+      "name": "01 - Arranque e reset de dados",
+      "item": [
+        {
+          "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"API responde com status ok\", () => pm.expect(json.status).to.eql(\"ok\"));",
+                  "pm.test(\"Identifica a aplicação\", () => pm.expect(json.app).to.eql(\"SauDInoB\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "Confirma que o servidor Express está ativo e que a API responde."
+          },
+          "response": []
+        },
+        {
+          "name": "Login admin para reset",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Recebe token JWT\", () => pm.expect(json.token).to.be.a(\"string\").and.not.empty);",
+                  "pm.test(\"Perfil é administrador\", () => pm.expect(json.user.role).to.eql(\"administrador\"));",
+                  "pm.collectionVariables.set(\"adminToken\", json.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@saudinob.pt\",\n  \"password\": \"admin123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Autentica o administrador inicial para permitir chamar o endpoint de reset."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset da base de dados",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Reset devolve mensagem\", () => pm.expect(json.mensagem).to.include(\"Base SQLite reposta\"));",
+                  "pm.test(\"Seed contém dados base\", () => {",
+                  "  pm.expect(json.totais.users).to.be.at.least(3);",
+                  "  pm.expect(json.totais.utentes).to.be.at.least(2);",
+                  "  pm.expect(json.totais.medicos).to.be.at.least(1);",
+                  "});",
+                  "pm.collectionVariables.unset(\"adminToken\");",
+                  "pm.collectionVariables.unset(\"medicoToken\");",
+                  "pm.collectionVariables.unset(\"utenteToken\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/seed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "seed"
+              ]
+            },
+            "description": "Repõe a base de dados SQLite com os dados simulados do seed. Depois deste pedido, é necessário fazer login novamente, porque as sessões são apagadas."
+          },
+          "response": []
+        }
+      ],
+      "description": "Testes iniciais para confirmar que a API responde e para repor a base de dados num estado previsível."
+    },
+    {
+      "name": "02 - Autenticação e sessões",
+      "item": [
+        {
+          "name": "Login admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Recebe token\", () => pm.expect(json.token).to.be.a(\"string\").and.not.empty);",
+                  "pm.test(\"Role correto\", () => pm.expect(json.user.role).to.eql(\"administrador\"));",
+                  "pm.test(\"Password não é devolvida\", () => pm.expect(json.user).to.not.have.property(\"password\"));",
+                  "pm.collectionVariables.set(\"adminToken\", json.token);",
+                  "pm.collectionVariables.set(\"adminProfileId\", json.profile && json.profile.id ? String(json.profile.id) : \"\");",
+                  "pm.collectionVariables.set(\"adminUserId\", String(json.user.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@saudinob.pt\",\n  \"password\": \"admin123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Autentica o perfil admin e guarda o token para os pedidos seguintes."
+          },
+          "response": []
+        },
+        {
+          "name": "Login médico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Recebe token\", () => pm.expect(json.token).to.be.a(\"string\").and.not.empty);",
+                  "pm.test(\"Role correto\", () => pm.expect(json.user.role).to.eql(\"medico\"));",
+                  "pm.test(\"Password não é devolvida\", () => pm.expect(json.user).to.not.have.property(\"password\"));",
+                  "pm.collectionVariables.set(\"medicoToken\", json.token);",
+                  "pm.collectionVariables.set(\"medicoProfileId\", json.profile && json.profile.id ? String(json.profile.id) : \"\");",
+                  "pm.collectionVariables.set(\"medicoUserId\", String(json.user.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"medico@saudinob.pt\",\n  \"password\": \"medico123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Autentica o perfil médico e guarda o token para os pedidos seguintes."
+          },
+          "response": []
+        },
+        {
+          "name": "Login utente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Recebe token\", () => pm.expect(json.token).to.be.a(\"string\").and.not.empty);",
+                  "pm.test(\"Role correto\", () => pm.expect(json.user.role).to.eql(\"utente\"));",
+                  "pm.test(\"Password não é devolvida\", () => pm.expect(json.user).to.not.have.property(\"password\"));",
+                  "pm.collectionVariables.set(\"utenteToken\", json.token);",
+                  "pm.collectionVariables.set(\"utenteProfileId\", json.profile && json.profile.id ? String(json.profile.id) : \"\");",
+                  "pm.collectionVariables.set(\"utenteUserId\", String(json.user.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"utente@saudinob.pt\",\n  \"password\": \"utente123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Autentica o perfil utente e guarda o token para os pedidos seguintes."
+          },
+          "response": []
+        },
+        {
+          "name": "Me com token de utente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"User é utente\", () => pm.expect(json.user.role).to.eql(\"utente\"));",
+                  "pm.test(\"Profile do utente existe\", () => pm.expect(json.profile).to.have.property(\"id\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Confirma que o token do utente é válido e devolve o perfil autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Login inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Devolve mensagem de erro\", () => pm.expect(json.erro).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"utente@saudinob.pt\",\n  \"password\": \"errada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Garante que credenciais erradas são rejeitadas."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar utilizadores como admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));",
+                  "pm.test(\"Tem pelo menos três utilizadores\", () => pm.expect(json.length).to.be.at.least(3));",
+                  "pm.test(\"Não devolve passwords\", () => json.forEach(user => pm.expect(user).to.not.have.property(\"password\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users"
+              ]
+            },
+            "description": "Valida que o administrador consegue listar utilizadores e que as passwords não são expostas."
+          },
+          "response": []
+        },
+        {
+          "name": "Obter utilizador 1 como admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"ID correto\", () => pm.expect(json.id).to.eql(1));",
+                  "pm.test(\"Password não é devolvida\", () => pm.expect(json).to.not.have.property(\"password\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users",
+                "1"
+              ]
+            },
+            "description": "Consulta um utilizador específico por ID."
+          },
+          "response": []
+        }
+      ],
+      "description": "Valida login dos três perfis, endpoint /me, listagem de utilizadores e logout."
+    },
+    {
+      "name": "03 - Segurança e controlo de acessos",
+      "item": [
+        {
+          "name": "Sem token em endpoint protegido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Mensagem indica sessão\", () => pm.expect(json.erro).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/alertas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "alertas"
+              ]
+            },
+            "description": "Tenta aceder a alertas sem autenticação. Deve falhar com 401."
+          },
+          "response": []
+        },
+        {
+          "name": "Utente não pode listar utilizadores",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Mensagem de sem permissão\", () => pm.expect(json.erro).to.include(\"permiss\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users"
+              ]
+            },
+            "description": "Garante que o utente não acede à gestão de utilizadores."
+          },
+          "response": []
+        },
+        {
+          "name": "Utente não pode criar medicação",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"utenteId\": 1,\n  \"medicoId\": 1,\n  \"nome\": \"Teste\",\n  \"dose\": \"1x/dia\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/medicacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "medicacoes"
+              ]
+            },
+            "description": "Garante que apenas médico ou administrador criam medicações."
+          },
+          "response": []
+        }
+      ],
+      "description": "Confirma que endpoints protegidos exigem token e que perfis sem permissão recebem 403."
+    },
+    {
+      "name": "04 - Utentes",
+      "item": [
+        {
+          "name": "Listar utentes como médico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));",
+                  "pm.test(\"Utentes têm user público\", () => pm.expect(json[0].user).to.not.have.property(\"password\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/utentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "utentes"
+              ]
+            },
+            "description": "Valida listagem de utentes acessível a médico."
+          },
+          "response": []
+        },
+        {
+          "name": "Pesquisar utentes por diagnóstico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));",
+                  "pm.test(\"Encontra pelo menos um utente com asma\", () => pm.expect(json.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/utentes?search=asma",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "utentes"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "asma"
+                }
+              ]
+            },
+            "description": "Valida filtro textual por diagnóstico/nome/processo."
+          },
+          "response": []
+        },
+        {
+          "name": "Obter utente 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"ID do utente é 1\", () => pm.expect(json.id).to.eql(1));",
+                  "pm.test(\"Inclui dados do utilizador\", () => pm.expect(json.user).to.have.property(\"email\"));",
+                  "pm.test(\"Não expõe password\", () => pm.expect(json.user).to.not.have.property(\"password\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/utentes/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "utentes",
+                "1"
+              ]
+            },
+            "description": "Consulta detalhe do utente, incluindo última avaliação e alertas ativos."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar utente como admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Utente criado tem ID\", () => pm.expect(json.id).to.be.a(\"number\"));",
+                  "pm.test(\"Role é utente\", () => pm.expect(json.user.role).to.eql(\"utente\"));",
+                  "pm.collectionVariables.set(\"createdUtenteId\", String(json.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Utente Teste {{$timestamp}}\",\n  \"email\": \"utente.teste.{{$timestamp}}@saudinob.pt\",\n  \"password\": \"utente123\",\n  \"medicoId\": 1,\n  \"dataNascimento\": \"1999-01-15\",\n  \"profissao\": \"Estudante\",\n  \"estadoCivil\": \"Solteira\",\n  \"telefone\": \"919999999\",\n  \"morada\": \"Rua de Teste, Porto\",\n  \"diagnosticos\": [\n    \"Asma\"\n  ],\n  \"notasClinicas\": \"Criado em teste Postman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/utentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "utentes"
+              ]
+            },
+            "description": "Cria um novo utente com email único e guarda o ID para atualização posterior."
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar utente criado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Profissão atualizada\", () => pm.expect(json.profissao).to.eql(\"Investigadora\"));",
+                  "pm.test(\"Diagnósticos atualizados\", () => pm.expect(json.diagnosticos).to.include(\"Rinite\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profissao\": \"Investigadora\",\n  \"diagnosticos\": [\n    \"Asma\",\n    \"Rinite\"\n  ],\n  \"notasClinicas\": \"Atualizado pelo teste Postman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/utentes/{{createdUtenteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "utentes",
+                "{{createdUtenteId}}"
+              ]
+            },
+            "description": "Atualiza parcialmente o utente criado no teste anterior."
+          },
+          "response": []
+        }
+      ],
+      "description": "Testes de listagem, consulta, criação e atualização de utentes."
+    },
+    {
+      "name": "05 - Médicos",
+      "item": [
+        {
+          "name": "Listar médicos como admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));",
+                  "pm.test(\"Existe pelo menos um médico\", () => pm.expect(json.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/medicos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "medicos"
+              ]
+            },
+            "description": "Valida a listagem de médicos disponível ao administrador."
+          },
+          "response": []
+        },
+        {
+          "name": "Obter médico 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"ID do médico é 1\", () => pm.expect(json.id).to.eql(1));",
+                  "pm.test(\"Inclui utentes associados\", () => pm.expect(json.utentes).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/medicos/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "medicos",
+                "1"
+              ]
+            },
+            "description": "Consulta os dados do médico autenticado."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar médico como admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Médico criado tem ID\", () => pm.expect(json.id).to.be.a(\"number\"));",
+                  "pm.test(\"Role é médico\", () => pm.expect(json.user.role).to.eql(\"medico\"));",
+                  "pm.collectionVariables.set(\"createdMedicoId\", String(json.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Dra. Teste {{$timestamp}}\",\n  \"email\": \"medico.teste.{{$timestamp}}@saudinob.pt\",\n  \"password\": \"medico123\",\n  \"cedula\": \"OM-{{$timestamp}}\",\n  \"especialidade\": \"Pneumologia\",\n  \"unidade\": \"Clínica SauDInoB\",\n  \"telefone\": \"918888888\",\n  \"morada\": \"Unidade de Teste\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/medicos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "medicos"
+              ]
+            },
+            "description": "Cria um médico com email único e guarda o respetivo ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar médico criado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Especialidade atualizada\", () => pm.expect(json.especialidade).to.eql(\"Imunoalergologia\"));",
+                  "pm.test(\"Unidade atualizada\", () => pm.expect(json.unidade).to.eql(\"Unidade Atualizada\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"especialidade\": \"Imunoalergologia\",\n  \"unidade\": \"Unidade Atualizada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/medicos/{{createdMedicoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "medicos",
+                "{{createdMedicoId}}"
+              ]
+            },
+            "description": "Atualiza os dados profissionais do médico criado."
+          },
+          "response": []
+        }
+      ],
+      "description": "Testes de listagem, consulta, criação e atualização de médicos."
+    },
+    {
+      "name": "06 - CARAT e avaliações",
+      "item": [
+        {
+          "name": "Obter questionário CARAT",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Tem 10 perguntas\", () => pm.expect(json.perguntas).to.have.length(10));",
+                  "pm.test(\"Tem opções de resposta\", () => pm.expect(json.opcoes).to.be.an(\"array\"));",
+                  "pm.test(\"Tem opções de medicação\", () => pm.expect(json.opcoesMedicacao).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/carat/questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "carat",
+                "questions"
+              ]
+            },
+            "description": "Endpoint público que devolve as 10 perguntas, opções de sintomas e opções de medicação."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar avaliações do utente 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));",
+                  "pm.test(\"Todas pertencem ao utente 1\", () => json.forEach(a => pm.expect(a.utenteId).to.eql(1)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/carat/avaliacoes?utenteId=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "carat",
+                "avaliacoes"
+              ],
+              "query": [
+                {
+                  "key": "utenteId",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Lista o histórico CARAT filtrado por utente."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar avaliação CARAT com alerta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta contém avaliação\", () => pm.expect(json.avaliacao).to.be.an(\"object\"));",
+                  "pm.test(\"Score total é 0\", () => pm.expect(json.avaliacao.scoreTotal).to.eql(0));",
+                  "pm.test(\"Interpretação é não controlado\", () => pm.expect(json.avaliacao.interpretacao).to.include(\"controlado\"));",
+                  "pm.test(\"Gera pelo menos um alerta\", () => pm.expect(json.alertasGerados.length).to.be.at.least(1));",
+                  "pm.collectionVariables.set(\"createdAvaliacaoId\", String(json.avaliacao.id));",
+                  "if (json.alertasGerados && json.alertasGerados[0]) {",
+                  "  pm.collectionVariables.set(\"createdAlertaId\", String(json.alertasGerados[0].id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"utenteId\": 1,\n  \"respostas\": [\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0,\n    0\n  ],\n  \"sintomas\": [\n    \"Falta de ar\",\n    \"Pieira\"\n  ],\n  \"comentarios\": \"Teste Postman com mau controlo.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/carat/avaliacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "carat",
+                "avaliacoes"
+              ]
+            },
+            "description": "Cria avaliação com score 0. Deve guardar avaliação, criar sintomas associados e gerar alerta clínico por score baixo."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar avaliação CARAT inválida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Mensagem refere 10 respostas\", () => pm.expect(json.erro).to.include(\"10 respostas\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"utenteId\": 1,\n  \"respostas\": [\n    1,\n    2,\n    3\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/carat/avaliacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "carat",
+                "avaliacoes"
+              ]
+            },
+            "description": "Valida que o backend rejeita avaliações sem as 10 respostas obrigatórias."
+          },
+          "response": []
+        }
+      ],
+      "description": "Testa o questionário CARAT, listagem, criação válida, criação inválida e geração automática de alertas/sintomas."
+    },
+    {
+      "name": "07 - Sintomas",
+      "item": [
+        {
+          "name": "Listar sintomas do utente 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));",
+                  "pm.test(\"Sintomas têm enriquecimento\", () => { if (json.length) pm.expect(json[0]).to.have.property(\"utenteNome\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sintomas?utenteId=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sintomas"
+              ],
+              "query": [
+                {
+                  "key": "utenteId",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Lista sintomas associados ao utente 1."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar sintoma",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Sintoma criado tem ID\", () => pm.expect(json.id).to.be.a(\"number\"));",
+                  "pm.test(\"Intensidade correta\", () => pm.expect(json.intensidade).to.eql(\"Moderada\"));",
+                  "pm.collectionVariables.set(\"createdSintomaId\", String(json.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"utenteId\": 1,\n  \"avaliacaoId\": \"{{createdAvaliacaoId}}\",\n  \"nome\": \"Tosse seca\",\n  \"intensidade\": \"Moderada\",\n  \"dataInicio\": \"{{$isoTimestamp}}\",\n  \"observacoes\": \"Criado pelo Postman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sintomas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sintomas"
+              ]
+            },
+            "description": "Regista um sintoma associado ao utente e à avaliação criada anteriormente."
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar sintoma",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Intensidade atualizada\", () => pm.expect(json.intensidade).to.eql(\"Intensa\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"utenteId\": 1,\n  \"avaliacaoId\": \"{{createdAvaliacaoId}}\",\n  \"nome\": \"Tosse seca\",\n  \"intensidade\": \"Intensa\",\n  \"dataInicio\": \"{{$isoTimestamp}}\",\n  \"observacoes\": \"Atualizado pelo Postman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sintomas/{{createdSintomaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sintomas",
+                "{{createdSintomaId}}"
+              ]
+            },
+            "description": "Atualiza a intensidade e observações do sintoma criado."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar sintoma inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"utenteId\": 1,\n  \"nome\": \"Sintoma inválido\",\n  \"intensidade\": \"Muito alta\",\n  \"dataInicio\": \"{{$isoTimestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sintomas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sintomas"
+              ]
+            },
+            "description": "Confirma que uma intensidade fora da lista permitida é rejeitada."
+          },
+          "response": []
+        }
+      ],
+      "description": "Testa listagem, filtros, criação e atualização de sintomas."
+    },
+    {
+      "name": "08 - Alertas",
+      "item": [
+        {
+          "name": "Listar alertas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));",
+                  "pm.test(\"Existe pelo menos um alerta\", () => pm.expect(json.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/alertas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "alertas"
+              ]
+            },
+            "description": "Lista todos os alertas visíveis para utilizadores autenticados."
+          },
+          "response": []
+        },
+        {
+          "name": "Filtrar alertas NOVO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Todos são NOVO\", () => json.forEach(a => pm.expect(a.estado).to.eql(\"NOVO\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/alertas?estado=NOVO",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "alertas"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "NOVO"
+                }
+              ]
+            },
+            "description": "Valida filtro por estado de alerta."
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar alerta para EM_SEGUIMENTO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Estado atualizado\", () => pm.expect(json.estado).to.eql(\"EM_SEGUIMENTO\"));",
+                  "pm.test(\"Regista ação\", () => pm.expect(json.acoes.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"EM_SEGUIMENTO\",\n  \"autorId\": 2,\n  \"nota\": \"Alerta revisto pelo médico no teste Postman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/alertas/{{createdAlertaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "alertas",
+                "{{createdAlertaId}}"
+              ]
+            },
+            "description": "Atualiza o estado do alerta gerado pela avaliação CARAT."
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar alerta com estado inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Mensagem refere estado inválido\", () => pm.expect(json.erro).to.include(\"Estado\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"RESOLVIDO\",\n  \"autorId\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/alertas/{{createdAlertaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "alertas",
+                "{{createdAlertaId}}"
+              ]
+            },
+            "description": "Confirma que o modelo de alertas só aceita estados válidos."
+          },
+          "response": []
+        }
+      ],
+      "description": "Testa listagem, filtros, atualização de estado e validação de estados inválidos."
+    },
+    {
+      "name": "09 - Dashboards",
+      "item": [
+        {
+          "name": "Dashboard utente 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Inclui resumo\", () => pm.expect(json).to.have.property(\"resumo\"));",
+                  "pm.test(\"Inclui avaliações\", () => pm.expect(json.avaliacoes).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/utente/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "utente",
+                "1"
+              ]
+            },
+            "description": "Mostra resumo clínico do utente, avaliações, alertas, medicações e exames."
+          },
+          "response": []
+        },
+        {
+          "name": "Dashboard médico 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Inclui médico\", () => pm.expect(json).to.have.property(\"medico\"));",
+                  "pm.test(\"Inclui utentes\", () => pm.expect(json.utentes).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/medico/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "medico",
+                "1"
+              ]
+            },
+            "description": "Mostra lista de utentes acompanhados pelo médico e alertas associados."
+          },
+          "response": []
+        },
+        {
+          "name": "Dashboard admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Inclui resumo administrativo\", () => pm.expect(json).to.have.property(\"resumo\"));",
+                  "pm.test(\"Resumo tem utilizadores\", () => pm.expect(json.resumo.utilizadores).to.be.at.least(3));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "admin"
+              ]
+            },
+            "description": "Mostra visão global da plataforma."
+          },
+          "response": []
+        }
+      ],
+      "description": "Valida dashboards por perfil: utente, médico e administrador."
+    },
+    {
+      "name": "10 - Medicações e exames",
+      "item": [
+        {
+          "name": "Listar medicações",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/medicacoes?utenteId=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "medicacoes"
+              ],
+              "query": [
+                {
+                  "key": "utenteId",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Lista medicações filtradas por utente."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar medicação",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Medicação criada\", () => pm.expect(json.nome).to.eql(\"Medicação teste Postman\"));",
+                  "pm.collectionVariables.set(\"createdMedicacaoId\", String(json.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"utenteId\": 1,\n  \"medicoId\": 1,\n  \"nome\": \"Medicação teste Postman\",\n  \"dose\": \"1 toma de 12/12h\",\n  \"estado\": \"Ativa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/medicacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "medicacoes"
+              ]
+            },
+            "description": "Cria uma medicação associada ao utente e médico."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar exames",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/exames?utenteId=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "exames"
+              ],
+              "query": [
+                {
+                  "key": "utenteId",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Lista exames filtrados por utente."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar exame",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Código normalizado\", () => pm.expect(json.codigo).to.eql(\"TST1\"));",
+                  "pm.collectionVariables.set(\"createdExameId\", String(json.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"utenteId\": 1,\n  \"medicoId\": 1,\n  \"nome\": \"Exame teste Postman\",\n  \"codigo\": \"TST1\",\n  \"estado\": \"Prescrito\",\n  \"resultado\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exames",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "exames"
+              ]
+            },
+            "description": "Cria exame com código válido de quatro caracteres."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar exame com código inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Mensagem refere código\", () => pm.expect(json.erro).to.include(\"código\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"utenteId\": 1,\n  \"medicoId\": 1,\n  \"nome\": \"Exame inválido\",\n  \"codigo\": \"ABC\",\n  \"estado\": \"Prescrito\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/exames",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "exames"
+              ]
+            },
+            "description": "Confirma que o backend rejeita exames cujo código não tenha exatamente quatro caracteres."
+          },
+          "response": []
+        }
+      ],
+      "description": "Valida criação e listagem de medicações e exames clínicos."
+    },
+    {
+      "name": "11 - Administração",
+      "item": [
+        {
+          "name": "Obter configuração",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Tem limiar\", () => pm.expect(json).to.have.property(\"limiarControloInsuficiente\"));",
+                  "pm.test(\"Tem variação\", () => pm.expect(json).to.have.property(\"variacaoDeterioracao\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/configuracao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "configuracao"
+              ]
+            },
+            "description": "Consulta limiares usados na geração automática de alertas."
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar configuração",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Limiar atualizado\", () => pm.expect(json.limiarControloInsuficiente).to.eql(20));",
+                  "pm.test(\"Variação atualizada\", () => pm.expect(json.variacaoDeterioracao).to.eql(4));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"limiarControloInsuficiente\": 20,\n  \"variacaoDeterioracao\": 4,\n  \"atorId\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/configuracao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "configuracao"
+              ]
+            },
+            "description": "Atualiza os parâmetros globais de geração de alertas."
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar configuração inválida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"limiarControloInsuficiente\": 40,\n  \"variacaoDeterioracao\": 0,\n  \"atorId\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/configuracao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "configuracao"
+              ]
+            },
+            "description": "Confirma que configurações fora dos limites aceites são rejeitadas."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar auditoria",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));",
+                  "pm.test(\"Tem pelo menos uma ação\", () => pm.expect(json.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/auditoria",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "auditoria"
+              ]
+            },
+            "description": "Consulta histórico de ações registadas no sistema."
+          },
+          "response": []
+        }
+      ],
+      "description": "Testa configuração global, auditoria e validações administrativas."
+    },
+    {
+      "name": "12 - Interoperabilidade FHIR",
+      "item": [
+        {
+          "name": "Listar Observations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));",
+                  "pm.test(\"Observation tem código CARAT\", () => { if (json.length) pm.expect(json[0].code).to.eql(\"CARAT-TOTAL\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/fhir/observations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fhir",
+                "observations"
+              ]
+            },
+            "description": "Lista todas as observações FHIR do tipo CARAT-TOTAL."
+          },
+          "response": []
+        },
+        {
+          "name": "Filtrar Observations por paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Resposta é array\", () => pm.expect(json).to.be.an(\"array\"));",
+                  "pm.test(\"Todas pertencem ao Patient/utente-1\", () => json.forEach(obs => pm.expect(obs.subject).to.eql(\"Patient/utente-1\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/fhir/observations?patient=Patient/utente-1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fhir",
+                "observations"
+              ],
+              "query": [
+                {
+                  "key": "patient",
+                  "value": "Patient/utente-1"
+                }
+              ]
+            },
+            "description": "Valida filtro FHIR por Patient/utente-1."
+          },
+          "response": []
+        },
+        {
+          "name": "Obter Observation criada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"ID começa por carat-\", () => pm.expect(json.id).to.include(\"carat-\"));",
+                  "pm.test(\"Código é CARAT-TOTAL\", () => pm.expect(json.code).to.eql(\"CARAT-TOTAL\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/fhir/observations/carat-{{createdAvaliacaoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fhir",
+                "observations",
+                "carat-{{createdAvaliacaoId}}"
+              ]
+            },
+            "description": "Consulta a Observation correspondente à avaliação CARAT criada durante os testes."
+          },
+          "response": []
+        },
+        {
+          "name": "Observation inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{medicoToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/fhir/observations/carat-999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "fhir",
+                "observations",
+                "carat-999999"
+              ]
+            },
+            "description": "Confirma que uma observação inexistente devolve 404."
+          },
+          "response": []
+        }
+      ],
+      "description": "Testa exposição de avaliações CARAT como Observations FHIR simplificadas."
+    },
+    {
+      "name": "13 - Logout",
+      "item": [
+        {
+          "name": "Logout utente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Sessão terminada\", () => pm.expect(json.terminado).to.eql(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Termina a sessão do utente."
+          },
+          "response": []
+        },
+        {
+          "name": "Me após logout deve falhar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{utenteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Confirma que o token do utente deixou de ser válido depois do logout."
+          },
+          "response": []
+        }
+      ],
+      "description": "Termina sessão e confirma que o token deixa de funcionar."
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "adminProfileId",
+      "value": ""
+    },
+    {
+      "key": "medicoProfileId",
+      "value": ""
+    },
+    {
+      "key": "utenteProfileId",
+      "value": ""
+    },
+    {
+      "key": "createdUtenteId",
+      "value": ""
+    },
+    {
+      "key": "createdMedicoId",
+      "value": ""
+    },
+    {
+      "key": "createdAvaliacaoId",
+      "value": ""
+    },
+    {
+      "key": "createdAlertaId",
+      "value": ""
+    },
+    {
+      "key": "createdSintomaId",
+      "value": ""
+    },
+    {
+      "key": "createdMedicacaoId",
+      "value": ""
+    },
+    {
+      "key": "createdExameId",
+      "value": ""
+    },
+    {
+      "key": "adminUserId",
+      "value": ""
+    },
+    {
+      "key": "medicoUserId",
+      "value": ""
+    },
+    {
+      "key": "utenteUserId",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "medicoToken",
+      "value": ""
+    },
+    {
+      "key": "utenteToken",
+      "value": ""
+    }
+  ]
+}
