@@ -67,7 +67,7 @@ A store SQLite cria tabelas relacionais com chaves primérias e estrangeiras par
 - `sessions`
 - `auditoria`
 
-A avliação utiliza SQLite como base de dados local. Na priemira inicialização, caso a base ainda não exista, o sistema cria automaticamente as tabelas e os dados iniciais.
+A aplicação utiliza SQLite como base de dados local. Na priemira inicialização, caso a base ainda não exista, o sistema cria automaticamente as tabelas e os dados iniciais.
 
 ## Funcionalidades implementadas
 
@@ -119,3 +119,10 @@ Authorization: Bearer <token devolvido no login>
 O login devolve um JWT assinado com HS256. O token inclui `email`, `sub`, `role`, `sid`, `iat` e `exp`.
 
 A tabela SQLite `sessions` guarda os JWT ativos para permitir revogação no logout e invalidação de sessões expiradas.
+
+
+## Trabalho desenvolvido por:
+Carolina Pinto (202406235);
+Inês Silva (202406425);
+Maria Helena Silva (202406524);
+Sara Moreira (202406368)
