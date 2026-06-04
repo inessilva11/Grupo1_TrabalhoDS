@@ -844,7 +844,7 @@ function renderFhirPanel(title, endpoints) {
       <div class="item-head">
         <div>
           <h2>${escapeHtml(title)}</h2>
-          <p class="muted">Interoperabilidade FHIR simplificada, alinhada com a referencia: apenas GET de Observations CARAT.</p>
+          <p class="muted">Interoperabilidade FHIR.</p>
         </div>
         ${badge("FHIR R4")}
       </div>
